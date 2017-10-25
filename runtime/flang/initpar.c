@@ -46,9 +46,6 @@
 
 #if   defined(TARGET_OSX)
 #include <crt_externs.h>
-#elif defined(__win32)
-/* OPENTOOLS14 has changed the name.  wrap _environ for all of windowws */
-char **__io_environ();
 #else
 WIN_MSVCRT_IMP char **environ;
 #endif
@@ -391,8 +388,6 @@ __fort_initarg()
   }
 #if   defined(TARGET_OSX)
   env = *_NSGetEnviron();
-#elif defined(__WIN32)
-  env = __io_environ();
 #else
   env = environ;
 #endif

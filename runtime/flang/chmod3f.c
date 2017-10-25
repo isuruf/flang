@@ -27,10 +27,6 @@
 #include "io3f.h"
 #include "ent3f.h"
 
-#ifdef WIN32
-#define chmod _chmod
-#endif
-
 extern char *__fstr2cstr();
 extern void __cstr_free();
 

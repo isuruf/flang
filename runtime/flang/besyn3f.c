@@ -21,10 +21,6 @@
 
 #include "ent3f.h"
 
-#ifdef WIN32
-#define yn _yn
-#endif
-
 extern double yn(int, double);
 
 float ENT3F(BESYN, besyn)(int *n, float *x) { return (float)yn(*n, *x); }
