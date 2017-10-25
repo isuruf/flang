@@ -32,6 +32,6 @@ build_script:
   - ps: |
       cmake --build . 2>&1 | Out-File build_output.txt
       Push-AppveyorArtifact .\build_output.txt
-  - Get-ChildItem -Path "C:" -Recurse | Where-Object { !$PsIsContainer -and [System.IO.Path]::GetFileNameWithoutExtension($_.Name) -eq "flang1" }
-  - Get-ChildItem -Path "C:" -Recurse | Where-Object { !$PsIsContainer -and [System.IO.Path]::GetFileNameWithoutExtension($_.Name) -eq "flang2" }
-  - Get-ChildItem -Path "C:" -Recurse | Where-Object { !$PsIsContainer -and [System.IO.Path]::GetFileNameWithoutExtension($_.Name) -eq "flang" }
+  - ps: Get-ChildItem -Path "C:" -Recurse | Where-Object { !$PsIsContainer -and [System.IO.Path]::GetFileNameWithoutExtension($_.Name) -eq "flang1" }
+  - ps: Get-ChildItem -Path "C:" -Recurse | Where-Object { !$PsIsContainer -and [System.IO.Path]::GetFileNameWithoutExtension($_.Name) -eq "flang2" }
+  - ps: Get-ChildItem -Path "C:" -Recurse | Where-Object { !$PsIsContainer -and [System.IO.Path]::GetFileNameWithoutExtension($_.Name) -eq "flang" }
