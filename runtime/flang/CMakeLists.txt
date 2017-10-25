@@ -523,6 +523,13 @@ set_property(
   HAVE_LONG_LONG_INT
  )
 
+if(WIN32)
+  set_property(
+   SOURCE async.c
+   PROPERTY COMPILE_DEFINITIONS 
+    TARGET_WIN_X8664
+ )
+endif()
 
 set_property(
  SOURCE initpar.c
