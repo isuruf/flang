@@ -26,6 +26,12 @@ endif()
 # components, so point its binary directory to the build directory to pick up
 # flang* executables
 SET(CMAKE_Fortran_FLAGS "-B ${LLVM_RUNTIME_OUTPUT_INTDIR} ${CMAKE_Fortran_FLAGS}")
+if(${TARGET_OS} STREQUAL "Windows" )
+  string (REPLACE "/DTARGET_LINUX_X8664" "" CMAKE_Fortran_FLAGS ${CMAKE_Fortran_FLAGS})
+  string (REPLACE "/DLINUX" "" CMAKE_Fortran_FLAGS ${CMAKE_Fortran_FLAGS})
+  string (REPLACE "-DTARGET_LINUX_X8664" "" CMAKE_Fortran_FLAGS ${CMAKE_Fortran_FLAGS})
+  string (REPLACE "-DLINUX" "" CMAKE_Fortran_FLAGS ${CMAKE_Fortran_FLAGS})
+endif()
 
 SET(FTN_INTRINSICS
   abort3f.c
