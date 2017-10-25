@@ -1,0 +1,23 @@
+environment:
+  CONDA_INSTALL_LOCN: C:\\Miniconda36-x64
+
+platform:
+  - x64
+
+install:
+  # Add path, activate `conda` and update conda.
+  - cmd: call %CONDA_INSTALL_LOCN%\Scripts\activate.bat
+  - cmd: conda update --yes --quiet conda
+  # Add our channels.
+  - cmd: conda config --add channels defaults
+  - cmd: conda config --add channels conda-forge
+  - cmd: conda config --add channels isuruf/label/flang
+  - cmd: conda install clangdev openmp cmake
+
+
+build_script:
+  - mkdir build
+  - cd build
+  - set "PATH=%cd%\bin;%PATH%"
+  - call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
+  - nmake
