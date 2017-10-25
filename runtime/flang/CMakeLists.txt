@@ -517,11 +517,19 @@ set_property(
 set_property(
  SOURCE ${FTN_SUPPORT} 
  PROPERTY COMPILE_DEFINITIONS 
-  TARGET_LINUX_X8664
+  TARGET_WIN_X8664
   INT32PTR64
   TM_I8
   HAVE_LONG_LONG_INT
  )
+
+if(WIN32)
+  set_property(
+   SOURCE async.c
+   PROPERTY COMPILE_DEFINITIONS 
+    TARGET_WIN_X8664
+ )
+endif()
 
 set_property(
  SOURCE initpar.c
