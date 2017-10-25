@@ -32,4 +32,3 @@ build_script:
   - ps: |
       cmake --build . 2>&1 | Out-File build_output.txt
       Push-AppveyorArtifact .\build_output.txt
-  - nmake VERBOSE=1 check-flang
