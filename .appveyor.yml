@@ -12,7 +12,7 @@ install:
   - cmd: conda config --add channels defaults
   - cmd: conda config --add channels conda-forge
   - cmd: conda config --add channels isuruf/label/flang
-  - cmd: conda install clangdev openmp cmake
+  - cmd: conda install --yes clangdev openmp cmake
 
 
 build_script:
@@ -20,4 +20,5 @@ build_script:
   - cd build
   - set "PATH=%cd%\bin;%PATH%"
   - call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
+  - cmake -G "NMake Makefiles" -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_Fortran_COMPILER=flang -DCMAKE_BUILD_TYPE=Release ..
   - nmake
