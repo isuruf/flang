@@ -42,22 +42,22 @@
 	parameter ( C_INTPTR_T = 8 )
 	integer C_SIZE_T
 	parameter ( C_SIZE_T = 8  )
-#endif
+#else
+	#if defined(TARGET_LINUX_X8664)  || defined(TARGET_OSX_X8664) || defined(TARGET_INTERIX_X8664) || defined(TARGET_LLVM_64)
+		integer C_LONG
+		parameter ( C_LONG = 8 )
+		integer C_INTPTR_T
+		parameter ( C_INTPTR_T = 8 )
+	#endif
+	#if defined(TARGET_LINUX_X8664)  || defined(TARGET_OSX_X8664) || defined(TARGET_LLVM_64)
+	       integer C_SIZE_T
+		parameter ( C_SIZE_T = 8  )
+	#endif
 
-#if defined(TARGET_LINUX_X8664)  || defined(TARGET_OSX_X8664) || defined(TARGET_INTERIX_X8664) || defined(TARGET_LLVM_64)
-	integer C_LONG
-	parameter ( C_LONG = 8 )
-	integer C_INTPTR_T
-	parameter ( C_INTPTR_T = 8 )
-#endif
-#if defined(TARGET_LINUX_X8664)  || defined(TARGET_OSX_X8664) || defined(TARGET_LLVM_64)
-       integer C_SIZE_T
-        parameter ( C_SIZE_T = 8  )
-#endif
-
-#if defined(TARGET_INTERIX_X8664)
-	integer C_SIZE_T
-	parameter ( C_SIZE_T = 4  )
+	#if defined(TARGET_INTERIX_X8664)
+		integer C_SIZE_T
+		parameter ( C_SIZE_T = 4  )
+	#endif
 #endif
 
 #if defined(TARGET_X8632) || defined(TARGET_LLVM_32)
