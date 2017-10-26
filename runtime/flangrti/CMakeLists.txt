@@ -161,6 +161,8 @@ SET(PGC_SRC_FILES
   tanh.c
   trace_lin.c
   trace.c
+  trace/c_interface.cxx
+  trace/StackWalker.cpp
   anint.c
   dnint.c
   idnint.c
@@ -185,12 +187,22 @@ else()
   set_property(TARGET flangrti_static PROPERTY OUTPUT_NAME flangrti)
 endif()
 
+target_include_directories(
+    flangrti_static PRIVATE
+    "."
+)
+
+target_include_directories(
+    flangrti_shared PRIVATE
+    "."
+)
 
 set(SHARED_LIBRARY TRUE)
 add_flang_library(flangrti_shared
   ${PGC_SRC_FILES}
   ${SHARED_SOURCES}
   )
+
 
 # Resolve symbols against libm
 
