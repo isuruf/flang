@@ -181,15 +181,16 @@ add_flang_library(flangrti_static
   ${PGC_SRC_FILES}
   ${SHARED_SOURCES}
   )
+
 if (MSVC)
   set_property(TARGET flangrti_static PROPERTY OUTPUT_NAME libflangrti)
 else()
   set_property(TARGET flangrti_static PROPERTY OUTPUT_NAME flangrti)
 endif()
 
-target_include_directories(
-    flangrti_static PRIVATE
-    "."
+target_include_directories(flangrti_static
+  PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
 set(SHARED_LIBRARY TRUE)
@@ -229,6 +230,11 @@ target_include_directories(flangrti_static
   PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}
   )
+  
+target_include_directories(flangrti_shared
+  PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}
+)
 
 set_target_properties(flangrti_shared flangrti_static
                       PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${FLANG_RTE_LIB_DIR})
