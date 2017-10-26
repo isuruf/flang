@@ -192,11 +192,6 @@ target_include_directories(
     "."
 )
 
-target_include_directories(
-    flangrti_shared PRIVATE
-    "."
-)
-
 set(SHARED_LIBRARY TRUE)
 add_flang_library(flangrti_shared
   ${PGC_SRC_FILES}
