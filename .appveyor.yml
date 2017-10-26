@@ -39,9 +39,3 @@ build_script:
   - ps: Compress-Archive -Path C:\projects\flang\build\lib -DestinationPath C:\Projects\flang\lib.zip
   - ps: Push-AppveyorArtifact C:\Projects\flang\lib.zip
   
-  - ps: |
-      cd ..\test
-      mkdir build
-      cd build
-      cmake ..
-      cmake --build .
