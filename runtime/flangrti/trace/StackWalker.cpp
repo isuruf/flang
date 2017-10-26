@@ -86,7 +86,7 @@
 #pragma comment(lib, "version.lib")  // for "VerQueryValue"
 #pragma warning(disable:4826)
 
-#include "StackWalker.h"
+#include "trace/StackWalker.h"
 
 
 // If VC7 and later, then use the shipped 'dbghelp.h'-file
