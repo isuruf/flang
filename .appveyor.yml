@@ -31,5 +31,5 @@ build_script:
       Push-AppveyorArtifact .\CMakeFiles\CMakeError.log
   - ps: |
       cmake --build . 2>&1 | Out-File build_output.txt
-      Push-AppveyorArtifact .\build_output.txt
       if($LastExitCode -ne 0) { $host.SetShouldExit($LastExitCode )  }
+      Push-AppveyorArtifact .\build_output.txt
