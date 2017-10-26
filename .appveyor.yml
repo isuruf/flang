@@ -40,7 +40,7 @@ build_script:
   - ps: Push-AppveyorArtifact C:\Projects\flang\lib.zip
   
   - ps: |
-      cd test
+      cd ..\test
       mkdir build
       cd build
       cmake ..
