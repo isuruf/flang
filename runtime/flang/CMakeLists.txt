@@ -498,7 +498,7 @@ add_flang_library(flang_shared
   ${SHARED_SOURCES}
   )
 set_property(TARGET flang_shared PROPERTY OUTPUT_NAME flang)
-target_link_libraries(flang_shared flangrti_shared libomp)
+target_link_libraries(flang_shared flangrti_shared)
 # Resolve symbols against libm and librt
 if (NOT MSVC)
 target_link_libraries(flang_shared rt m)
