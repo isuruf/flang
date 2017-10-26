@@ -32,6 +32,4 @@ build_script:
   - ps: |
       cmake --build . 2>&1 | Out-File build_output.txt
       Push-AppveyorArtifact .\build_output.txt
-  - ps: Compress-Archive -Path C:\projects\flang\build\bin -DestinationPath C:\Projects\flang | Push-AppveyorArtifact $_.FullName
-  - ps: Compress-Archive -Path C:\projects\flang\build\lib -DestinationPath C:\Projects\flang | Push-AppveyorArtifact $_.FullName
-
+      if($LastExitCode -ne 0) { $host.SetShouldExit($LastExitCode )  }
