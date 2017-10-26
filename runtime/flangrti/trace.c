@@ -65,7 +65,7 @@ dbg_stop_before_exit(void)
  * 3 - traceback (signal)
  */
 
-#if defined(_WIN32)
+#if defined(WIN32) || defined(WIN64)
 #define getpid _getpid
 #endif
 
@@ -141,7 +141,7 @@ __abort_init(char *path)
   int n;
   int neg;
 
-#if defined(_WIN32)
+#if defined(WINNT)
   fn = path;
 #endif
   p = getenv("TRACE_TERM");
