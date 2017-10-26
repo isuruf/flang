@@ -2,8 +2,8 @@
 #include <signal.h>
 #include <tchar.h>
 
-extern "C" { #include "c_interface.h" }
-#include "StackWalker.h"
+extern "C" { #include "trace/c_interface.h" }
+#include "trace/StackWalker.h"
 
 void SignalHandler(int signal)
 {
