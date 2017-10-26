@@ -235,11 +235,6 @@ target_include_directories(flangrti_static
   ${CMAKE_CURRENT_SOURCE_DIR}
   )
 
-target_include_directories(flangrti_shared
-  PRIVATE
-  ${CMAKE_CURRENT_SOURCE_DIR}
-  )
-
 set_target_properties(flangrti_shared flangrti_static
                       PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${FLANG_RTE_LIB_DIR})
 
