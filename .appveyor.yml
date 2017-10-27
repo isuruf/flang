@@ -18,6 +18,7 @@ install:
   - cmd: conda config --add channels conda-forge
   - cmd: conda config --add channels isuruf/label/flang
   - cmd: conda install --yes --quiet clangdev openmp cmake
+  - ps: pip install lit
 
 
 build_script:
