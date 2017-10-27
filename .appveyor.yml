@@ -27,7 +27,7 @@ build_script:
   - set "PATH=%cd%\bin;%PATH%"
   - call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
   - ps: |
-      cmake -G "NMake Makefiles" -DFLANG_INCLUDE_TESTS=ON FLANG_TEST_VERBOSE_MODE=ON -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_Fortran_COMPILER=flang -DCMAKE_VERBOSE_MAKEFILE=ON -DCMAKE_BUILD_TYPE=Release ..
+      cmake -G "NMake Makefiles" -DFLANG_INCLUDE_TESTS=ON -DFLANG_TEST_VERBOSE_MODE=ON -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_Fortran_COMPILER=flang -DCMAKE_VERBOSE_MAKEFILE=ON -DCMAKE_BUILD_TYPE=Release ..
       Push-AppveyorArtifact .\CMakeFiles\CMakeOutput.log
       Push-AppveyorArtifact .\CMakeFiles\CMakeError.log
   - ps: |
