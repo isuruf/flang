@@ -37,7 +37,7 @@ build_script:
       if($LastExitCode -ne 0) { $host.SetShouldExit($LastExitCode )  }
       Push-AppveyorArtifact .\build_output.txt
       Get-Content .\build_output.txt -Tail 500
-  - "%MSYS2_ROOT%\usr\bin\bash.exe nmake check-flang"
+  - c:\msys64\usr\bin\bash.exe nmake check-flang
   - ps: Compress-Archive -Path C:\projects\flang\build\bin -DestinationPath C:\Projects\flang\bin.zip
   - ps: Push-AppveyorArtifact C:\Projects\flang\bin.zip
   - ps: Compress-Archive -Path C:\projects\flang\build\lib -DestinationPath C:\Projects\flang\lib.zip
