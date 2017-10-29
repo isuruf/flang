@@ -341,7 +341,7 @@ macro(add_flang_library name)
     add_dependencies( ${name} ${LLVM_COMMON_DEPENDS} )
   endif( LLVM_COMMON_DEPENDS )
 
-  llvm_config( ${name} ${LLVM_LINK_COMPONENTS} 
+  llvm_config( ${name} ${LLVM_LINK_COMPONENTS} )
   if(WIN32)
     list(APPEND LLVM_COMMON_LIBS Dbghelp.lib Ws2_32.lib)
   endif()
