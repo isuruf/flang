@@ -199,7 +199,9 @@ __abort_sig_init(void)
 #include <signal.h>
 #include <tchar.h>
 #include <DbgHelp.h>
-void __abort_trace(int skip)
+
+void
+__abort_trace(int skip)
 {
      unsigned int   i;
      void         * stack[ 100 ];
@@ -228,6 +230,7 @@ void __abort_trace(int skip)
     exit(1);
 }
 
+void
 abort_sig_init(void)
 { 
     signal(SIGSEGV , __abort_trace);
