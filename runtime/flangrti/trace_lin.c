@@ -194,7 +194,8 @@ __abort_sig_init(void)
 }
 
 #else
-void SignalHandler(int signal)
+#include <Windows.h>
+void __abort_trace(int skip)
 {
      unsigned int   i;
      void         * stack[ 100 ];
@@ -223,19 +224,11 @@ void SignalHandler(int signal)
     exit(1);
 }
 
-void _install_win32_handlers()
-{
+abort_sig_init(void)
+{ 
     typedef void (*SignalHandlerPointer)(int);
 
     SignalHandlerPointer previousHandler;
-    previousHandler = signal(SIGSEGV , SignalHandler);
-}
-
-void __abort_trace(int skip)
-{ }
-
-void __abort_sig_init(void)
-{ 
-  _install_win32_handlers();
+    previousHandler = signal(SIGSEGV , __abort_trace);
 }
 #endif
