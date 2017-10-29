@@ -43,6 +43,10 @@ build_script:
   - ps: Push-AppveyorArtifact C:\Projects\flang\bin.zip
   - ps: Compress-Archive -Path C:\projects\flang\build\lib -DestinationPath C:\Projects\flang\lib.zip
   - ps: Push-AppveyorArtifact C:\Projects\flang\lib.zip
+  
+  - ps: |
+      ls -r . | Out-File directory_listing.txt
+      Push-AppveyorArtifact .\directory_listing.txt
 
 test_script:
   - cmd: set "PATH=%MSYS2_ROOT%\usr\bin\;%PATH%"
