@@ -2,11 +2,13 @@ branches:
   only:
     - master
     - windows
+    - test
 
 environment:
   global:
-    MSYS2_ROOT: c:\msys64
+    MSYS2_ROOT: C:\msys64
     CONDA_INSTALL_LOCN: C:\\Miniconda36-x64
+    PYTHON2_LOCN: C:\\Python27-x64
 
 platform:
   - x64
@@ -20,6 +22,7 @@ install:
   - cmd: conda config --add channels conda-forge
   - cmd: conda config --add channels isuruf/label/flang
   - cmd: conda install --yes --quiet clangdev openmp cmake
+  - cmd: set "PATH=%PYTHON2_LOCN%\Scripts;%PYTHON2_LOCN%;%PATH%"
   - ps: pip install lit
 
 
@@ -37,9 +40,15 @@ build_script:
       if($LastExitCode -ne 0) { $host.SetShouldExit($LastExitCode )  }
       Push-AppveyorArtifact .\build_output.txt
       Get-Content .\build_output.txt -Tail 500
-  - c:\msys64\usr\bin\bash.exe -l -c "cd /c/projects/flang/build && nmake.exe check-flang"
   - ps: Compress-Archive -Path C:\projects\flang\build\bin -DestinationPath C:\Projects\flang\bin.zip
   - ps: Push-AppveyorArtifact C:\Projects\flang\bin.zip
   - ps: Compress-Archive -Path C:\projects\flang\build\lib -DestinationPath C:\Projects\flang\lib.zip
   - ps: Push-AppveyorArtifact C:\Projects\flang\lib.zip
-  
+
+test_script:
+  - cmd: set "PATH=%PATH%;%MSYS2_ROOT%\usr\bin\"
+  - cmd: copy lib\flangmain.lib %CONDA_INSTALL_LOCN%\Library\lib
+  - cmd: copy lib\flangrti.lib %CONDA_INSTALL_LOCN%\Library\lib
+  - cmd: copy lib\flang.lib %CONDA_INSTALL_LOCN%\Library\lib
+  - cmd: copy lib\ompstub.lib %CONDA_INSTALL_LOCN%\Library\lib
+  - cmd: nmake check-flang
