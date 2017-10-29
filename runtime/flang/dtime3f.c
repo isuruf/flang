@@ -35,7 +35,10 @@
 #define CLK_TCK sysconf(_SC_CLK_TCK)
 #endif
 
-#ifndef _WIN32
+#ifdef _WIN32
+  #include "times_win32.h"
+#endif
+
 static clock_t accum_user = 0, accum_sys = 0;
 
 float ENT3F(DTIME, dtime)(float *tarray)
@@ -50,33 +53,5 @@ float ENT3F(DTIME, dtime)(float *tarray)
   accum_sys = b.tms_stime;
   return (tarray[0] + tarray[1]);
 }
-#else
-#include <Windows.h>
-static FILETIME accum_user;
-static FILETIME accum_sys;
 
-float convert_filetime( const FILETIME *ac_FileTime )
-{
-  ULARGE_INTEGER    lv_Large ;
-
-  lv_Large.LowPart  = ac_FileTime->dwLowDateTime   ;
-  lv_Large.HighPart = ac_FileTime->dwHighDateTime  ;
-
-  return (float)lv_Large.QuadPart ;
-}
-
-float ENT3F(DTIME, dtime)(float *tarray)
-{
-
-  FILETIME time_create;
-  FILETIME time_exit;
-
-  GetProcessTimes( GetCurrentProcess(),
-        &time_create, &time_exit, &accum_sys, &accum_user );
-
-  tarray[0] = ((float)(convert_filetime(&accum_user)));
-  tarray[1] = ((float)(convert_filetime(&accum_sys)));
-  return (tarray[0] + tarray[1]);
-}
-#endif
 
