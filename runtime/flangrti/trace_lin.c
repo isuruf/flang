@@ -195,6 +195,9 @@ __abort_sig_init(void)
 
 #else
 #include <Windows.h>
+#include <stdlib.h>
+#include <signal.h>
+#include <tchar.h>
 void __abort_trace(int skip)
 {
      unsigned int   i;
