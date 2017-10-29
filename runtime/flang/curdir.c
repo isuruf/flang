@@ -115,8 +115,12 @@ void __fort_gethostname(host) char *host;
     }
     p = un.nodename;
   }
-  strcpy(host, p);
 #else
-  strcpy(host, "localhost");
-#endif	  
+  #include <Winsock2.h>
+  s = gethostname(&p, 256);
+  if (s != 0) {
+     __fort_abortp("uname");
+  }
+#endif
+  strcpy(host, p);
 }
