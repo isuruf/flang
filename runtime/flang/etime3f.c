@@ -36,7 +36,7 @@
 
 #ifdef _WIN32
    #include "times_win32.h"
-   #define CLK_TCK 1
+   #define CLK_TCK 10000000.0
 #else
    #ifndef CLK_TCK
    #define CLK_TCK sysconf(_SC_CLK_TCK)
