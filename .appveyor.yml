@@ -1,10 +1,13 @@
-environment:
-  CONDA_INSTALL_LOCN: C:\\Miniconda36-x64
-
 branches:
   only:
     - master
     - windows
+
+environment:
+  global:
+    MSYS2_ROOT: C:\msys64
+    CONDA_INSTALL_LOCN: C:\\Miniconda36-x64
+    PYTHON2_LOCN: C:\\Python27-x64
 
 platform:
   - x64
@@ -18,7 +21,9 @@ install:
   - cmd: conda config --add channels conda-forge
   - cmd: conda config --add channels isuruf/label/flang
   - cmd: conda install --yes --quiet clangdev openmp cmake
-
+  - cmd: set "PATH=%PYTHON2_LOCN%\Scripts;%PYTHON2_LOCN%;%PATH%"
+  - cmd: appveyor DownloadFile "https://raw.githubusercontent.com/isuruf/flang/utils/llvm_utils_for_flang.zip" -FileName "utils.zip"
+  - cmd: 7z x -oC:\llvm_src utils.zip
 
 build_script:
   - mkdir build
@@ -26,7 +31,7 @@ build_script:
   - set "PATH=%cd%\bin;%PATH%"
   - call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
   - ps: |
-      cmake -G "NMake Makefiles" -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_Fortran_COMPILER=flang -DCMAKE_VERBOSE_MAKEFILE=ON -DCMAKE_BUILD_TYPE=Release ..
+      cmake -G "NMake Makefiles" -DFLANG_INCLUDE_TESTS=ON -DFLANG_TEST_VERBOSE_MODE=ON -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_Fortran_COMPILER=flang -DCMAKE_VERBOSE_MAKEFILE=ON -DCMAKE_BUILD_TYPE=Release -DLLVM_INCLUDE_TESTS=ON -DLLVM_MAIN_SRC_DIR=C:\llvm_src ..
       Push-AppveyorArtifact .\CMakeFiles\CMakeOutput.log
       Push-AppveyorArtifact .\CMakeFiles\CMakeError.log
   - ps: |
@@ -39,3 +44,12 @@ build_script:
   - ps: Compress-Archive -Path C:\projects\flang\build\lib -DestinationPath C:\Projects\flang\lib.zip
   - ps: Push-AppveyorArtifact C:\Projects\flang\lib.zip
 
+test_script:
+  - cmd: set "PATH=%MSYS2_ROOT%\usr\bin\;%PATH%"
+  - cmd: copy lib\flangmain.lib %CONDA_INSTALL_LOCN%\Library\lib
+  - cmd: copy lib\flangrti.lib %CONDA_INSTALL_LOCN%\Library\lib
+  - cmd: copy lib\flang.lib %CONDA_INSTALL_LOCN%\Library\lib
+  - cmd: copy lib\ompstub.lib %CONDA_INSTALL_LOCN%\Library\lib
+  - cmd: nmake FileCheck
+  - cmd: copy bin\FileCheck.exe binFileCheck.exe
+  #- cmd: nmake check-flang
