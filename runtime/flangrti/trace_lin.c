@@ -223,7 +223,7 @@ __abort_trace(int skip)
          SymFromAddr( process, ( DWORD64 )( stack[ i ] ), 0, symbol );
 
          printf( "%i: %s - 0x%0X\n", frames - i - 1, symbol->Name, symbol->Address );
-  
+     }  
 
      free( symbol );
     
@@ -231,7 +231,7 @@ __abort_trace(int skip)
 }
 
 void
-abort_sig_init(void)
+__abort_sig_init(void)
 { 
     signal(SIGSEGV , __abort_trace);
     signal(SIGILL , __abort_trace);
