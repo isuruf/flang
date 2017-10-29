@@ -198,6 +198,7 @@ __abort_sig_init(void)
 #include <stdlib.h>
 #include <signal.h>
 #include <tchar.h>
+#include <DbgHelp.h>
 void __abort_trace(int skip)
 {
      unsigned int   i;
