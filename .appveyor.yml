@@ -2,7 +2,6 @@ branches:
   only:
     - master
     - windows
-    - test
 
 environment:
   global:
