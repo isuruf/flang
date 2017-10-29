@@ -226,9 +226,18 @@ void __abort_trace(int skip)
 
 abort_sig_init(void)
 { 
-    typedef void (*SignalHandlerPointer)(int);
+    signal(SIGSEGV , __abort_trace);
+    signal(SIGILL , __abort_trace);
+    signal(SIGABRT, __abort_trace);
+    signal(SIGFPE, __abort_trace);
+/*
+    SIGABRT	Abnormal termination
+    SIGFPE	Floating-point error
+    SIGILL	Illegal instruction
+    SIGINT	CTRL+C signal
+    SIGSEGV	Illegal storage access
+    SIGTERM	Termination request
 
-    SignalHandlerPointer previousHandler;
-    previousHandler = signal(SIGSEGV , __abort_trace);
+*/
 }
 #endif
