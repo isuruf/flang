@@ -31,12 +31,13 @@
 #include <sys/types.h>
 #include <limits.h>
 
-#ifndef CLK_TCK
-#define CLK_TCK sysconf(_SC_CLK_TCK)
-#endif
-
 #ifdef _WIN32
   #include "times_win32.h"
+  #define CLK_TCK 1
+#else
+  #ifndef CLK_TCK
+  #define CLK_TCK sysconf(_SC_CLK_TCK)
+  #endif
 #endif
 
 static clock_t accum_user = 0, accum_sys = 0;
