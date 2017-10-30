@@ -1852,6 +1852,10 @@ ll_write_global_objects(FILE *out, LLVMModuleRef module)
     }
 
     /* Alignment */
+    #ifdef _WIN32
+    if (object->align_bytes && (object->align_bytes > 32))
+      object->align_bytes = 32;
+    #endif
     if (object->align_bytes)
       fprintf(out, ", align %u", object->align_bytes);
 
