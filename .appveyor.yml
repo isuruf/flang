@@ -20,7 +20,7 @@ install:
   - cmd: conda config --add channels defaults
   - cmd: conda config --add channels conda-forge
   - cmd: conda config --add channels isuruf/label/flang
-  - cmd: conda install --yes --quiet clangdev openmp cmake
+  - cmd: conda install --yes --quiet clangdev openmp cmake=3.9
   - cmd: set "PATH=%PYTHON2_LOCN%\Scripts;%PYTHON2_LOCN%;%PATH%"
   - cmd: appveyor DownloadFile "https://raw.githubusercontent.com/isuruf/flang/utils/llvm_utils_for_flang.zip" -FileName "utils.zip"
   - cmd: 7z x -oC:\llvm_src utils.zip
