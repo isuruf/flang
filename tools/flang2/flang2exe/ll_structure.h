@@ -634,6 +634,7 @@ enum LL_MDName {
   /** DWARF compilation unit descriptors, from "Source Level Debugging with
       LLVM". */
   MD_llvm_dbg_cu,
+  MD_llvm_linker_options,
   MD_opencl_kernels,   /**< SPIR */
   MD_nvvm_annotations, /**< CUDA */
   MD_nvvmir_version,   /**< CUDA */
