@@ -579,13 +579,25 @@ ll_create_module(const char *module_name, const char *target_triple,
   compute_ir_feature_vector(new_module, llvm_ir_version);
   compute_datalayout(new_module);
    
-  /*
-   LL_MDRef md_string = ll_get_md_string(LL_Module *module, const char *str);
+  #ifdef _WIN32
+   
+   const char *linker_directives[] = {
+      "/DEFAULTLIB:flang.lib",
+      "/DEFAULTLIB:flangrti.lib",
+      "/DEFAULTLIB:ompstub.lib"
+   };
+   const int number_linker_directives = 3;
+   const LL_MDRef *elems = (LL_MDRef *)malloc(sizeof(LL_MDRef) * number_linker_directives);
 
-   // malloc on heap a sest of md_string
-
-   ll_set_named_md_node(&new_module, MD_llvm_linker_options, const LL_MDRef *elems, unsigned nelems)
-  */
+   int i = 0;
+   for( i = 0; i < number_linker_directives; i++)
+   {
+       elems = ll_get_md_string(&new_module, linker_directives[i]);
+       *elems += sizeof(LL_MDRef);
+   }
+   ll_set_named_md_node(&new_module, MD_llvm_linker_options, &elems, number_linker_directives)
+   
+  #endif
    
   return new_module;
 }
