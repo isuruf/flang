@@ -580,25 +580,21 @@ ll_create_module(const char *module_name, const char *target_triple,
   compute_datalayout(new_module);
    
   #ifdef _WIN32
-   
-   const char *linker_directives[] = {
-      "/DEFAULTLIB:flang.lib",
-      "/DEFAULTLIB:flangrti.lib",
-      "/DEFAULTLIB:ompstub.lib"
-   };
-   const int ndirectives = sizeof(linker_directives) / sizeof(linker_directives[0]);
-   LL_MDRef *elems = (LL_MDRef *)malloc(sizeof(LL_MDRef) * ndirectives);
-
-   int i = 0;
-   for( i = 0; i < ndirectives; i++)
-   {
-       elems = ll_get_md_string(new_module, linker_directives[i]);
-       *elems += sizeof(LL_MDRef);
-   }
-   ll_set_named_md_node(&new_module, MD_llvm_linker_options, &elems, ndirectives);
-   
+  const char *linker_directives[] = {
+     "/DEFAULTLIB:flang.lib",
+     "/DEFAULTLIB:flangrti.lib",
+     "/DEFAULTLIB:ompstub.lib"
+  };
+  const int ndirectives = sizeof(linker_directives) / sizeof(linker_directives[0]);
+  LL_MDRef *elems = (LL_MDRef *)malloc(sizeof(LL_MDRef) * ndirectives);
+  for( i = 0; i < ndirectives; i++)
+  {
+      elems = ll_get_md_string(new_module, linker_directives[i]);
+      *elems += sizeof(LL_MDRef);
+  }
+  ll_set_named_md_node(new_module, MD_llvm_linker_options, &elems, ndirectives);
   #endif
-   
+
   return new_module;
 }
 
