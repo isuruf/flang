@@ -193,7 +193,7 @@ __abort_sig_init(void)
   }
 }
 
-#else
+#elif 0
 #include <Windows.h>
 #include <stdlib.h>
 #include <signal.h>
