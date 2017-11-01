@@ -580,6 +580,15 @@ ll_create_module(const char *module_name, const char *target_triple,
 
   compute_ir_feature_vector(new_module, llvm_ir_version);
   compute_datalayout(new_module);
+   
+  /*
+   LL_MDRef md_string = ll_get_md_string(LL_Module *module, const char *str);
+
+   // malloc on heap a sest of md_string
+
+   ll_set_named_md_node(&new_module, MD_llvm_linker_options, const LL_MDRef *elems, unsigned nelems)
+  */
+   
   return new_module;
 }
 
