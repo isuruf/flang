@@ -595,7 +595,7 @@ ll_create_module(const char *module_name, const char *target_triple,
        elems = ll_get_md_string(new_module, linker_directives[i]);
        *elems += sizeof(LL_MDRef);
    }
-   ll_set_named_md_node(&new_module, MD_llvm_linker_options, &elems, ndirectives)
+   ll_set_named_md_node(&new_module, MD_llvm_linker_options, &elems, ndirectives);
    
   #endif
    
