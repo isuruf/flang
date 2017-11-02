@@ -21,6 +21,7 @@
  */
 
 #include "gbldefs.h"
+#include "global.h"
 #include "error.h"
 #include "ll_builder.h"
 #include "ll_structure.h"
