@@ -585,11 +585,13 @@ ll_create_module(const char *module_name, const char *target_triple,
      "/DEFAULTLIB:flangrti.lib",
      "/DEFAULTLIB:ompstub.lib"
   };
+  LLMD_Builder mdb = llmd_init(new_module);
   for(int i = 0; i < 3; i++)
   {
-      LL_MDRef elem = ll_get_md_string(new_module, linker_directives[i]);
-      ll_extend_named_md_node(new_module, MD_llvm_linker_options, elem);
+      llmd_add_string(mdb, linker_directives[i]);
   }
+  LL_MDRef linker_md = llmd_finish(mdb);   
+  ll_extend_named_md_node(new_module, MD_llvm_linker_options, linker_md);
   #endif
 
   return new_module;
