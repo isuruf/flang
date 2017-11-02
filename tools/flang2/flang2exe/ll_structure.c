@@ -582,7 +582,7 @@ ll_create_module(const char *module_name, const char *target_triple,
    
   #ifdef _WIN32
   if (flg.linker_directives) {
-    add_linker_directives(LLVMModuleRef module);
+    add_linker_directives(new_module);
   }
   #endif
 
@@ -592,8 +592,8 @@ ll_create_module(const char *module_name, const char *target_triple,
 void
 add_linker_directives(LLVMModuleRef module) {
    LLMD_Builder mdb = llmd_init(module);
-
-   for (i = 0; (linker_directive = flg.linker_directives[i]); ++i) {
+   char* linker_directive;
+   for (int i = 0; (linker_directive = flg.linker_directives[i]); ++i) {
        LLMD_Builder submdb = llmd_init(module);
 
        llmd_add_string(submdb, linker_directive);
