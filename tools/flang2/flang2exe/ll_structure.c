@@ -621,7 +621,7 @@ add_linker_directives(LLVMModuleRef module) {
    llmd_add_string(debug_mdb, "Debug Info Version");
    llmd_add_i32(debug_mdb, mdVers);
 
-   debug_md = llmd_finish(debug_mdb);
+   LL_MDRef debug_md = llmd_finish(debug_mdb);
 
    ll_extend_named_md_node(module, MD_llvm_module_flags, debug_md);
    /*
