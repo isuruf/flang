@@ -587,7 +587,7 @@ ll_create_module(const char *module_name, const char *target_triple,
   };
   for(int i = 0; i < 3; i++)
   {
-      elem = ll_get_md_string(new_module, linker_directives[i]);
+      LL_MDRef elem = ll_get_md_string(new_module, linker_directives[i]);
       ll_extend_named_md_node(new_module, MD_llvm_linker_options, elem);
   }
   #endif
