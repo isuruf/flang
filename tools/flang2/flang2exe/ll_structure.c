@@ -614,7 +614,7 @@ add_linker_directives(LLVMModuleRef module) {
    LL_MDRef boilerplate_md = llmd_finish(boilerplate_mdb);
    ll_extend_named_md_node(module, MD_llvm_module_flags, boilerplate_md);
 
-   db = calloc(1, sizeof(LL_DebugInfo));
+   LL_DebugInfo *db = calloc(1, sizeof(LL_DebugInfo));
    module->debug_info = db;
 
    const int mdVers = ll_feature_versioned_dw_tag(&module->ir) ? 1 :
