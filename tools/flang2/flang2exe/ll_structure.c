@@ -583,8 +583,40 @@ ll_create_module(const char *module_name, const char *target_triple,
   compute_datalayout(new_module);
    
   #ifdef _WIN32
-
   if (flg.linker_directives) {
+    add_linker_directives(LLVMModuleRef module);
+  }
+  #endif
+
+  return new_module;
+}
+
+void
+add_linker_directives(LLVMModuleRef module) {
+   LLMD_Builder mdb = llmd_init(module);
+
+   for (i = 0; (linker_directive = flg.linker_directives[i]); ++i) {
+       LLMD_Builder submdb = llmd_init(module);
+
+       llmd_add_string(submdb, linker_directive);
+       LL_MDRef submd = llmd_finish(submdb);
+
+       llmd_add_md(mdb, submd);
+   }
+   LL_MDRef md = llmd_finish(mdb);
+
+   LLMD_Builder boilerplate_mdb = llmd_init(module);
+   
+   llmd_add_i32(boilerplate_mdb, 6);
+   llmd_add_string(boilerplate_mdb, "Linker Options");
+   llmd_add_md(boilerplate_mdb, md);
+   
+   LL_MDRef boilerplate_md = llmd_finish(boilerplate_mdb);
+   ll_extend_named_md_node(module, MD_llvm_module_flags, boilerplate_md);
+
+   /*
+   LLVM 5.0:
+
     int i;
     char *linker_directive;
     LLMD_Builder mdb = llmd_init(new_module);
@@ -593,10 +625,7 @@ ll_create_module(const char *module_name, const char *target_triple,
     }
     LL_MDRef linker_md = llmd_finish(mdb);
     ll_extend_named_md_node(new_module, MD_llvm_linker_options, linker_md);
-  }
-  #endif
-
-  return new_module;
+   */
 }
 
 struct LL_Function_ *
