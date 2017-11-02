@@ -589,7 +589,7 @@ ll_create_module(const char *module_name, const char *target_triple,
     int i;
     char *linker_directive;
     LLMD_Builder mdb = llmd_init(new_module);
-    for (i = 0; (chp = flg.linker_directives[i]); ++i) {
+    for (i = 0; (linker_directive = flg.linker_directives[i]); ++i) {
       llmd_add_string(mdb, linker_directive);
     }
     LL_MDRef linker_md = llmd_finish(mdb);
