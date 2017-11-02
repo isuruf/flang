@@ -22,9 +22,9 @@
 
 #include "gbldefs.h"
 #include "error.h"
+#include "ll_builder.h"
 #include "ll_structure.h"
 #include "lldebug.h"
-#include "ll_builder.h"
 #include "global.h"
 #include "go.h"
 #include <stdarg.h>
