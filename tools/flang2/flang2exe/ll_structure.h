@@ -1071,5 +1071,6 @@ llObjtodbgGet(LL_ObjToDbgListIter *iter)
 
 void llObjtodbgPush(LL_ObjToDbgList *odl, LL_MDRef md);
 void llObjtodbgFree(LL_ObjToDbgList *ods);
+void add_linker_directives(LLVMModuleRef module)
 
 #endif
