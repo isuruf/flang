@@ -581,18 +581,17 @@ ll_create_module(const char *module_name, const char *target_triple,
   compute_datalayout(new_module);
    
   #ifdef _WIN32
-  const char *linker_directives[] = {
-     "/DEFAULTLIB:flang.lib",
-     "/DEFAULTLIB:flangrti.lib",
-     "/DEFAULTLIB:ompstub.lib"
-  };
-  LLMD_Builder mdb = llmd_init(new_module);
-  for(int i = 0; i < 3; i++)
-  {
-      llmd_add_string(mdb, linker_directives[i]);
+
+  if (flg.linker_directives) {
+    int i;
+    char *linker_directive;
+    LLMD_Builder mdb = llmd_init(new_module);
+    for (i = 0; (chp = flg.linker_directives[i]); ++i) {
+      llmd_add_string(mdb, linker_directive);
+    }
+    LL_MDRef linker_md = llmd_finish(mdb);
+    ll_extend_named_md_node(new_module, MD_llvm_linker_options, linker_md);
   }
-  LL_MDRef linker_md = llmd_finish(mdb);   
-  ll_extend_named_md_node(new_module, MD_llvm_linker_options, linker_md);
   #endif
 
   return new_module;
