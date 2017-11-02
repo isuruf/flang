@@ -614,13 +614,18 @@ add_linker_directives(LLVMModuleRef module) {
    LL_MDRef boilerplate_md = llmd_finish(boilerplate_mdb);
    ll_extend_named_md_node(module, MD_llvm_module_flags, boilerplate_md);
 
-   LL_DebugInfo *db = calloc(1, sizeof(LL_DebugInfo));
-   module->debug_info = db;
+   LLMD_Builder debug_mdb = llmd_init(module);
 
    const int mdVers = ll_feature_versioned_dw_tag(&module->ir) ? 1 :
-      module->ir.debug_info_version;   
-   ll_extend_named_md_node(module, MD_llvm_module_flags,
-          lldbg_create_module_flag_mdnode(db, 1, "Debug Info Version", mdVers));
+      module->ir.debug_info_version;
+
+   llmd_add_i32(debug_mdb, 1);
+   llmd_add_string(debug_mdb, "Debug Info Version");
+   llmd_add_i32(debug_mdb, mdVers);
+
+   debug_md = llmd_finish(debug_mdb);
+
+   ll_extend_named_md_node(module, MD_llvm_module_flags, debug_md);
    /*
    LLVM 5.0:
 
