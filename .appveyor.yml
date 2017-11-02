@@ -3,11 +3,15 @@ branches:
     - master
     - windows
 
+cache:
+  - %APPVEYOR_BUILD_FOLDER%\build
+
 environment:
   global:
     MSYS2_ROOT: C:\msys64
     CONDA_INSTALL_LOCN: C:\\Miniconda36-x64
     PYTHON2_LOCN: C:\\Python27-x64
+    APPVEYOR_SAVE_CACHE_ON_FAILURE: true
 
 platform:
   - x64
