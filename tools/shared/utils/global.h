@@ -159,6 +159,8 @@ typedef struct {
   UINT xon;
   LOGICAL ucase;
   char **idir;
+  char **linker_directives;
+  char *llvm_target_triple;
   LOGICAL dlines;
   int extend_source;
   LOGICAL i4;
