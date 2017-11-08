@@ -6712,6 +6712,7 @@ addarth(ILI *ilip)
   case IL_VMIN:
   case IL_VMAX:
   case IL_VABS:
+  case IL_VCMP:
   case IL_VSQRT:
   case IL_VRCP:
   case IL_VRSQRT:
@@ -11850,6 +11851,8 @@ ili_get_vect_type(int ilix)
   case IL_VFMA3:
   case IL_VFMA4:
   case IL_VPERMUTE:
+  case IL_VCMP:
+  case IL_VBLEND:
     return ILI_OPND(ilix, 4);
   default:
     interr("ili_get_vect_type missing case for ili opc", ILI_OPC(ilix), 3);
