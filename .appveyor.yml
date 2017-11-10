@@ -3,8 +3,8 @@ branches:
     - master
     - windows
 
-cache:
-  - '%APPVEYOR_BUILD_FOLDER%\build'
+#cache:
+#  - '%APPVEYOR_BUILD_FOLDER%\build'
 
 environment:
   global:
