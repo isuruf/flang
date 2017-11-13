@@ -9,12 +9,14 @@ cache:
 environment:
   global:
     MSYS2_ROOT: C:\msys64
-    CONDA_INSTALL_LOCN: C:\\Miniconda36-x64
-    PYTHON2_LOCN: C:\\Python27-x64
     APPVEYOR_SAVE_CACHE_ON_FAILURE: true
-
-platform:
-  - x64
+  matrix:
+    - CONDA_INSTALL_LOCN: C:\\Miniconda36-x64
+      PYTHON2_LOCN: C:\\Python27-x64
+      PLAT: amd64
+    - CONDA_INSTALL_LOCN: C:\\Miniconda36
+      PYTHON2_LOCN: C:\\Python27
+      PLAT: x86
 
 install:
   # Add path, activate `conda` and update conda.
@@ -32,7 +34,7 @@ build_script:
   - ps: mkdir build; $LastExitCode = 0
   - cd build
   - set "PATH=%cd%\bin;%PATH%"
-  - call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
+  - call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" %PLAT%
   - ps: |
       cmake -G "NMake Makefiles" -DFLANG_INCLUDE_TESTS=ON -DFLANG_TEST_VERBOSE_MODE=ON -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_Fortran_COMPILER=flang -DCMAKE_VERBOSE_MAKEFILE=ON -DCMAKE_BUILD_TYPE=Release -DLLVM_INCLUDE_TESTS=ON -DLLVM_MAIN_SRC_DIR=C:\llvm_src ..
       Push-AppveyorArtifact .\CMakeFiles\CMakeOutput.log
