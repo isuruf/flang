@@ -29,7 +29,7 @@ typedef char *LPSTR;
 typedef int DWORD;
 
 #if defined(WIN64) || defined(WIN32)
-#if defined(WIN64)
+#if defined(WIN64) || defined(WIN32)
 typedef long long LDWORD;
 extern int GetVolumeInformationA();
 #define ENTNAM(ss) _##ss
