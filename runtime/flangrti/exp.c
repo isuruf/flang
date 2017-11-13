@@ -15,7 +15,7 @@
  *
  */
 
-extern float expf(float);
+#include <math.h>
 
 float
 __mth_i_exp(float arg)

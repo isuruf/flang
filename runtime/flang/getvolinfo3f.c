@@ -29,18 +29,12 @@ typedef char *LPSTR;
 typedef int DWORD;
 
 #if defined(WIN64) || defined(WIN32)
+#include <Windows.h>
 #if defined(WIN64)
-typedef long long LDWORD;
-extern int GetVolumeInformationA();
-#define ENTNAM(ss) _##ss
-
+    #define ENTNAM(ss) _##ss
 #else
-typedef long LDWORD;
-extern int __stdcall GetVolumeInformationA();
-#define ENTNAM(ss) ss
+    #define ENTNAM(ss) ss
 #endif
-
-typedef LDWORD *LPDWORD;
 
 static void fill(LPSTR, int, int);
 
