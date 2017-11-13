@@ -15,8 +15,10 @@
  *
  */
 
+#include <math.h>  
+
 float
 __mth_i_sqrt(float f)
 {
-  return __builtin_sqrtf(f);
+  return sqrtf(f);
 }
