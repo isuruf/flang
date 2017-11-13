@@ -11,12 +11,12 @@ environment:
     MSYS2_ROOT: C:\msys64
     APPVEYOR_SAVE_CACHE_ON_FAILURE: true
   matrix:
-    - CONDA_INSTALL_LOCN: C:\\Miniconda36-x64
-      PYTHON2_LOCN: C:\\Python27-x64
-      PLAT: amd64
     - CONDA_INSTALL_LOCN: C:\\Miniconda36
       PYTHON2_LOCN: C:\\Python27
       PLAT: x86
+    - CONDA_INSTALL_LOCN: C:\\Miniconda36-x64
+      PYTHON2_LOCN: C:\\Python27-x64
+      PLAT: amd64
 
 install:
   # Add path, activate `conda` and update conda.
