@@ -201,6 +201,7 @@ SET(FTN_INTRINSICS
   mod.c
   mvbits3f.c
   nargs3f.c
+  omp_lib_kinds.F95
   omp_lib.F95
   outstr3f.c
   packtimeqq3f.c
@@ -529,6 +530,11 @@ set_source_files_properties(
   PROPERTIES
   OBJECT_OUTPUTS ${CMAKE_Fortran_MODULE_DIRECTORY}/iso_c_binding.mod
   )
+set_source_files_properties(
+  omp_lib_kinds.F95
+  PROPERTIES
+  OBJECT_OUTPUTS ${CMAKE_Fortran_MODULE_DIRECTORY}/omp_lib_kinds.mod
+  )
 
 # State a dependency on the module
 set_source_files_properties(
@@ -537,7 +543,11 @@ set_source_files_properties(
   PROPERTIES
   OBJECT_DEPENDS ${CMAKE_Fortran_MODULE_DIRECTORY}/iso_c_binding.mod
   )
-
+set_source_files_properties(
+  omp_lib.F95
+  PROPERTIES
+  OBJECT_DEPENDS ${CMAKE_Fortran_MODULE_DIRECTORY}/omp_lib_kinds.mod
+  )
 
 set_target_properties(flang_static flang_shared
   PROPERTIES
