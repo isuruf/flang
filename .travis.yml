@@ -17,6 +17,9 @@ install:
         cmake
 
   - source activate test-environment
+  
+  # For testing
+  - pip install lit
 
 script:
   - mkdir -p build
