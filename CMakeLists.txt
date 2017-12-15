@@ -22,16 +22,6 @@ cmake_minimum_required(VERSION 2.8)
 # CMake's Fortran tests
 SET(CMAKE_Fortran_COMPILER_WORKS 1)
 
-
-set(CMAKE_Fortran_PREPROCESS_SOURCE
-    "<CMAKE_Fortran_COMPILER> -cpp <DEFINES> <INCLUDES> <FLAGS> -E <SOURCE> -o <PREPROCESSED_SOURCE>")
-
-# If we are not building as a part of LLVM, build Flang as an
-# standalone project, using LLVM as an external library:
-if( CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR )
-  project(Flang)
-endif()
-
 set(TARGET_OS ${CMAKE_HOST_SYSTEM_NAME} CACHE STRING "Target OS")
 set(TARGET_ARCHITECTURE ${CMAKE_HOST_SYSTEM_PROCESSOR} CACHE STRING "Target Architecture")
 
