@@ -1,8 +1,13 @@
 language: c
 
+cache:
+  directories:
+    - $HOME/.conda/pkgs
+    - $HOME/miniconda/pkgs
+
 install:
   - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
-  - bash miniconda.sh -b -p $HOME/miniconda
+  - bash miniconda.sh -u -b -p $HOME/miniconda
   - export PATH="$HOME/miniconda/bin:$PATH"
   - hash -r
   - conda config --set always_yes yes --set changeps1 no
@@ -17,6 +22,7 @@ install:
         cmake
 
   - source activate test-environment
+  - conda info -a
   
   # For testing
   - pip install lit
@@ -24,8 +30,12 @@ install:
 script:
   - mkdir -p build
   - cd build
-  - cmake -DFLANG_INCLUDE_TESTS=ON -DFLANG_TEST_VERBOSE_MODE=ON -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_Fortran_COMPILER=flang ..
+  - cmake -DFLANG_INCLUDE_TESTS=ON -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_Fortran_COMPILER=flang ..
   - make -j4
+  
+  - cp lib/* $HOME/miniconda/envs/test-environment/lib
+  - cp bin/* $HOME/miniconda/envs/test-environment/bin
+  
   - make check-flang
 
 notifications:
