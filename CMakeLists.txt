@@ -22,7 +22,7 @@ cmake_minimum_required(VERSION 2.8)
 # CMake's Fortran tests
 SET(CMAKE_Fortran_COMPILER_WORKS 1)
 
-if( NOT WIN32)
+if( NOT WIN32 )
   if( NOT DEFINED TARGET_ARCHITECTURE )
     execute_process(COMMAND uname -m OUTPUT_STRIP_TRAILING_WHITESPACE
                     OUTPUT_VARIABLE TARGET_ARCHITECTURE)
