@@ -22,8 +22,20 @@ cmake_minimum_required(VERSION 2.8)
 # CMake's Fortran tests
 SET(CMAKE_Fortran_COMPILER_WORKS 1)
 
-set(TARGET_OS ${CMAKE_HOST_SYSTEM_NAME} CACHE STRING "Target OS")
-set(TARGET_ARCHITECTURE ${CMAKE_HOST_SYSTEM_PROCESSOR} CACHE STRING "Target Architecture")
+if( NOT WIN32 )
+  if( NOT DEFINED TARGET_ARCHITECTURE )
+    execute_process(COMMAND uname -m OUTPUT_STRIP_TRAILING_WHITESPACE
+                    OUTPUT_VARIABLE TARGET_ARCHITECTURE)
+  endif()
+
+  if( NOT DEFINED TARGET_OS )
+    execute_process(COMMAND uname -s OUTPUT_STRIP_TRAILING_WHITESPACE
+                    OUTPUT_VARIABLE TARGET_OS)
+  endif()
+else()
+  set(TARGET_OS ${CMAKE_HOST_SYSTEM_NAME} CACHE STRING "Target OS")
+  set(TARGET_ARCHITECTURE ${CMAKE_HOST_SYSTEM_PROCESSOR} CACHE STRING "Target Architecture")
+endif()
 
 if( ${TARGET_OS} STREQUAL "Linux" )
   set(OS "LINUX")
