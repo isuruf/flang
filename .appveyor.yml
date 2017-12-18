@@ -2,6 +2,7 @@ branches:
   only:
     - master
     - windows
+    - windows-rebased
 
 cache:
   - '%APPVEYOR_BUILD_FOLDER%\build'
