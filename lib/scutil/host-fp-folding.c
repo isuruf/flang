@@ -81,33 +81,28 @@ fold_sanity_check(void)
 static void
 configure_denormals(bool denorms_are_zeros, bool flush_to_zero)
 {
-#ifdef _WIN32
-  int mxcsr = _mm_getcsr();
-#else
   fenv_t fenv;
   if (fegetenv(&fenv) != 0)
     fprintf(stderr, "fegetenv() failed: %s\n", strerror(errno));
-#endif
 #ifdef __x86_64__
-  #ifdef _WIN32
-    mxcsr &= ~0x0040;
-    if (denorms_are_zeros)
-      mxcsr |= 0x0040;
-    mxcsr &= ~0x8000;
-    if (flush_to_zero)
-      mxcsr |= 0x8000;    
-  #else
-    fenv.__mxcsr &= ~0x0040;
-    if (denorms_are_zeros)
-      fenv.__mxcsr |= 0x0040;
-    fenv.__mxcsr &= ~0x8000;
-    if (flush_to_zero)
-      fenv.__mxcsr |= 0x8000;
-  #endif
+#ifdef _WIN32
+  unsigned int mxcsr = _mm_getcsr();
+#else
+  unsigned int mxcsr = fenv.__mxcsr
 #endif
+  mxcsr &= ~0x0040;
+  if (denorms_are_zeros)
+    mxcsr |= 0x0040;
+  mxcsr &= ~0x8000;
+  if (flush_to_zero)
+    mxcsr |= 0x8000;
 #ifdef _WIN32
   _mm_setcsr( mxcsr );
 #else
+  fenv.__mxcsr = mxcsr;
+#endif
+#endif
+#ifndef _WIN32
   if (fesetenv(&fenv) != 0)
     fprintf(stderr, "fesetenv() failed: %s\n", strerror(errno));
 #endif
