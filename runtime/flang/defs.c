@@ -34,7 +34,7 @@ __INT_T *f90DummyGenBlockPtr = &f90DummyGenBlock;
  * linked in from the library.  The link will not see the .comm for
  * __fort_test (i.e., its definition!).
  */
-__fort_vars_t   __fort_vars __attribute__((aligned(128))) = {
+__declspec(align(128)) __fort_vars_t   __fort_vars = {
     .debug      = 0,
     .zmem       = 0,
     .debugn     = 0,

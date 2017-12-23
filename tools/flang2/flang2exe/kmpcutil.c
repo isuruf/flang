@@ -401,10 +401,11 @@ build_kmpc_api_name(int kmpc_api, va_list va)
 static int
 mk_kmpc_api_call(int kmpc_api, int n_args, int *arg_dtypes, int *arg_ilis, ...)
 {
-  int i, r, ilix, altilix, gargs, fn_sptr, garg_ilis[n_args];
+  int i, r, ilix, altilix, gargs, fn_sptr;
   const char *nm;
   const int ret_opc = KMPC_RET_ILIOPC(kmpc_api);
   const int ret_dtype = KMPC_RET_DTYPE(kmpc_api);
+  int *garg_ilis = malloc(n_args*sizeof(int));
   va_list va;
 
   /* Some calls will make use of this (see: KMPC_FLAG_STR_FMT) */
@@ -432,6 +433,8 @@ mk_kmpc_api_call(int kmpc_api, int n_args, int *arg_dtypes, int *arg_ilis, ...)
     ILI_ALT(ilix) = altilix;
 
   va_end(va);
+  free(garg_ilis);
+  
   return ilix;
 }
 

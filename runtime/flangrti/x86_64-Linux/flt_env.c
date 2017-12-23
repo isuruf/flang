@@ -511,19 +511,19 @@ __fenv_feraiseexcept(int exc)
 int
 __fenv_feenableexcept(int exc)
 {
-  return feenableexcept(exc);
+  return 0;
 }
 
 int
 __fenv_fedisableexcept(int exc)
 {
-  return fedisableexcept(exc);
+  return 0;
 }
 
 int
 __fenv_fegetexcept(void)
 {
-  return fegetexcept();
+  return 0;
 }
 
 int

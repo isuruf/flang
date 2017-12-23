@@ -17,10 +17,15 @@
 
 /* inhibit floating point copy propagation */
 #pragma global - Mx, 6, 0x100
+#include <math.h>
 
 double
 __mth_i_fabs(double arg)
 {
+#ifdef _MSC_VER
+  return fabs(arg);
+#else
   double d = __builtin_fabs(arg);
   return d;
+#endif
 }

@@ -39,9 +39,11 @@ set_target_properties(scutil
   C_STANDARD 99
 )
 
-# Clang does not support FENV_ACCESS
-set_source_files_properties(
-  host-fp-folding.c
-  PROPERTIES
-  COMPILE_FLAGS "${CMAKE_C_FLAGS} -Wno-unknown-pragmas"
-)
+if(NOT MSVC)
+  # Clang does not support FENV_ACCESS
+  set_source_files_properties(
+    host-fp-folding.c
+    PROPERTIES
+    COMPILE_FLAGS "${CMAKE_C_FLAGS} -Wno-unknown-pragmas"
+  )
+endif()

@@ -15,8 +15,10 @@
  *
  */
 
+#include <math.h>
+
 int
 __mth_i_abs(int arg)
 {
-  return __builtin_abs(arg);
+  return abs(arg);
 }

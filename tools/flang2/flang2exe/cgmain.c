@@ -2144,7 +2144,7 @@ static LL_MDRef
 locset_to_tbaa_info(LL_Module *module, LL_MDRef omniPtr, int ilix)
 {
   const int NAME_SZ = 32;
-  char name[NAME_SZ];
+  char name[32];
   LL_MDRef a[3];
   int bsym, rv;
   const ILI_OP opc = ILI_OPC(ilix);

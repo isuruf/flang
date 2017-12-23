@@ -16,6 +16,8 @@
  */
 
 #include "mthdecls.h"
+#include <math.h>
+
 double
 __mth_i_dsqrt(double d)
 {

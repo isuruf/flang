@@ -6291,9 +6291,10 @@ void ENTFTN(RNUMD, rnumd)(__REAL8_T *hb, F90_Desc *harvest)
  */
 
 static void
-put_int(void *b, F90_Desc *d, __INT_T val)
+put_int(void *v, F90_Desc *d, __INT_T val)
 {
   dtype kind;
+  char *b = (char *)v;
 
   if (F90_TAG_G(d) == __DESC) {
     if (F90_RANK_G(d) != 0)

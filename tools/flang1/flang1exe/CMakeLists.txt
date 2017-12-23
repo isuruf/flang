@@ -103,8 +103,10 @@ set(COMMON_DEFS
   PGF90
   )
 
-set_source_files_properties(accpp.c PROPERTIES COMPILE_FLAGS -Wno-comment)
-set_source_files_properties(fpp.c PROPERTIES COMPILE_FLAGS -Wno-comment)
+if(NOT MSVC)
+  set_source_files_properties(accpp.c PROPERTIES COMPILE_FLAGS -Wno-comment)
+  set_source_files_properties(fpp.c PROPERTIES COMPILE_FLAGS -Wno-comment)
+endif()
 
 set(INCLUDE_DIRS
   ${FLANG_INCLUDE_DIR}

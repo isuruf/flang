@@ -854,7 +854,6 @@ f90_compiled_arg()
 
 
 void
-__attribute__((constructor))
 f90_compiled()
 {
 #ifndef TARGET_LINUX_ARM

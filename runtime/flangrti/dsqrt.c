@@ -15,8 +15,10 @@
  *
  */
 
+#include <math.h>
+
 double
 __mth_i_dsqrt(double d)
 {
-  return __builtin_sqrt(d);
+  return sqrt(d);
 }
