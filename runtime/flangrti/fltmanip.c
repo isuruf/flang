@@ -179,7 +179,7 @@ __nextafter(double x, double y)
   return ex;
 }
 
-#define _MAXFLOAT (3.40282347e+38F)
+#define _MAXFLOAT (3.40282346e+38F)
 
 float
 __nextafterf(float x, float y)

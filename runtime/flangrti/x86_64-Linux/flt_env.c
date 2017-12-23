@@ -19,7 +19,7 @@
  * \brief  Set ieee floating point environment.
  */
 
-#if (defined(TARGET_X8664) || defined(TARGET_X86) || defined(X86)) 
+#if (defined(TARGET_X8664) || defined(TARGET_X86) || defined(X86)) && 0
 
 /* These routines are included in linux and osx.
    Plus, we can standardize our support of F2003 ieee_exceptions

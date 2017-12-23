@@ -39,7 +39,7 @@
 
 /* Linux and MacOS environments provide <stdbool.h> even for C89.
    Microsoft OpenTools 10 does not, even for C99. */
-#if __linux__ || __APPLE__ || __STDC_VERSION__ >= 199901L && !__PGI_TOOLS10
+#if __linux__ || __APPLE__ || __STDC_VERSION__ >= 199901L && !__PGI_TOOLS10 || defined(_MSC_VER)
 #include <stdbool.h>
 #else
 typedef char bool;
