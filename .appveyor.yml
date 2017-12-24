@@ -30,6 +30,8 @@ install:
   # - cmd: 7z x -oC:\llvm_src utils.zip
 
 build_script:
+  - ps: rm -r -Force build
+  
   - ps: if (-Not (Test-Path .\build)) { mkdir build }
   - cd build
   - set "PATH=%cd%\bin;%PATH%"
