@@ -47,6 +47,6 @@ foreach(MP_TEST ${MP_TESTS})
     )
 
     add_test("RUN_${MP_TEST_NAME}"
-        ${MP_TEST_NAME}
+        ${CMAKE_BINARY_DIR}/bin/${MP_TEST_NAME}
     )
 endforeach()
