@@ -4,9 +4,6 @@ branches:
     - windows
     - windows-rebased
 
-cache:
-  - '%APPVEYOR_BUILD_FOLDER%\build'
-
 environment:
   global:
     MSYS2_ROOT: C:\msys64
@@ -20,7 +17,6 @@ platform:
 install:
   # Add path, activate `conda` and update conda.
   - cmd: call %CONDA_INSTALL_LOCN%\Scripts\activate.bat
-  - cmd: conda install --yes --quiet conda=4.3
   # Add our channels.
   - cmd: conda config --add channels defaults
   - cmd: conda config --add channels conda-forge
