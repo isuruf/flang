@@ -397,9 +397,9 @@ set(LIBFLANG_LIBRARY_VERSION
     "Version number that will be placed into the libflang library , in the form XX.YY")
 mark_as_advanced(FLANG_EXECUTABLE_VERSION LIBFLANG_LIBRARY_VERSION)
 
-option(FLANG_INCLUDE_TESTS
+option(BUILD_TESTING
        "Generate build targets for the Flang unit tests."
-       ${LLVM_INCLUDE_TESTS})
+       OFF)
 # Not needed (yet?); other flang uses it to invoke tablegen for generating doc/errmsg(?) files
 #add_subdirectory(include)
 
@@ -425,7 +425,7 @@ add_subdirectory(tools)
 #endif()
 #add_subdirectory(examples)
 
-if( FLANG_INCLUDE_TESTS )
+if( BUILD_TESTING )
 #  if(EXISTS ${LLVM_MAIN_SRC_DIR}/utils/unittest/googletest/include/gtest/gtest.h)
 #    add_subdirectory(unittests)
 #    list(APPEND FLANG_TEST_DEPS FlangUnitTests)
@@ -434,22 +434,6 @@ if( FLANG_INCLUDE_TESTS )
 #      )
 #  endif()
   add_subdirectory(test)
-
-  if(FLANG_BUILT_STANDALONE)
-    # Add a global check rule now that all subdirectories have been traversed
-    # and we know the total set of lit testsuites.
-    get_property(LLVM_LIT_TESTSUITES GLOBAL PROPERTY LLVM_LIT_TESTSUITES)
-    get_property(LLVM_LIT_PARAMS GLOBAL PROPERTY LLVM_LIT_PARAMS)
-    get_property(LLVM_LIT_DEPENDS GLOBAL PROPERTY LLVM_LIT_DEPENDS)
-    get_property(LLVM_LIT_EXTRA_ARGS GLOBAL PROPERTY LLVM_LIT_EXTRA_ARGS)
-    add_lit_target(check-all
-      "Running all regression tests"
-      ${LLVM_LIT_TESTSUITES}
-      PARAMS ${LLVM_LIT_PARAMS}
-      DEPENDS ${LLVM_LIT_DEPENDS}
-      ARGS ${LLVM_LIT_EXTRA_ARGS}
-      )
-  endif()
 #  add_subdirectory(utils/perf-training)
 endif()
 
