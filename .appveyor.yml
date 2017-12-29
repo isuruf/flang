@@ -22,7 +22,6 @@ install:
   - cmd: conda config --add channels conda-forge
   - cmd: conda install --yes --quiet flang-meta llvmdev clangdev openmp cmake
 
-  - cmd: 7z x -oC:\llvm_src utils.zip
 
 build_script:
   - ps: mkdir build; $LastExitCode = 0
