@@ -20,6 +20,8 @@ install:
   - cmd: conda config --add channels conda-forge
   - cmd: conda install --yes --quiet flang-meta llvmdev clangdev openmp cmake
 
+  - cmd: conda install --yes -c isuruf kitware-ninja
+
 
 build_script:
   - ps: mkdir build
