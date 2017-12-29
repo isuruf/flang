@@ -37,12 +37,13 @@ foreach(MP_TEST ${MP_TESTS})
         flangrti_shared
         flang_shared
         flangmain
+        ompstub_shared
     )
 
     # Link with OMP library
     target_compile_options(${MP_TEST_NAME}
        PRIVATE
-       -mp
+       -nomp
     )
 
     add_test("RUN_${MP_TEST_NAME}"
