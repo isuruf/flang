@@ -433,6 +433,7 @@ if( BUILD_TESTING )
 #      flang_unit_site_config=${CMAKE_CURRENT_BINARY_DIR}/test/Unit/lit.site.cfg
 #      )
 #  endif()
+  enable_testing()
   add_subdirectory(test)
 #  add_subdirectory(utils/perf-training)
 endif()
