@@ -36,15 +36,15 @@ foreach(MP_TEST ${MP_TESTS})
     target_link_libraries(${MP_TEST_NAME}
         flangrti_shared
         flang_shared
-        ompstub_shared
         flangmain
     )
 
-    # target_compile_options(${MP_TEST_NAME}
-    #    PRIVATE
-    #    -module
-    #    ${CMAKE_CURRENT_SOURCE_DIR}/src
-    #)
+    # Link with OMP library
+    target_compile_options(${MP_TEST_NAME}
+       PRIVATE
+       -mp
+    )
+
     add_test("RUN_${MP_TEST_NAME}"
         ${MP_TEST_NAME}
     )
