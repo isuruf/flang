@@ -203,6 +203,7 @@ SET(FTN_INTRINSICS
   mod.c
   mvbits3f.c
   nargs3f.c
+  omp_lib_kinds.F95
   omp_lib.F95
   outstr3f.c
   packtimeqq3f.c
@@ -486,6 +487,14 @@ add_library(ieee_arithmetic OBJECT
   ieee_exceptions.F95
 )
 
+add_library(omp_lib_kinds OBJECT
+  omp_lib_kinds.F95
+)
+
+add_library(omp_lib OBJECT
+  omp_lib.F95
+)
+
 add_flang_library(flang_static
   ${FTN_INTRINSICS}
   ${FTN_SUPPORT}
@@ -554,7 +563,6 @@ set_property(
 ## CMake does not handle module dependencies between Fortran files,
 ## we need to help it
 
-
 set_target_properties(flang_static flang_shared
   PROPERTIES
   ARCHIVE_OUTPUT_DIRECTORY ${FLANG_RTE_LIB_DIR}
@@ -577,6 +585,7 @@ add_dependencies(flang_static
   flang1
   flang2
   ieee_arithmetic
+  omp_lib
   )
 
 # Make sure the compiler is built before we bootstrap
@@ -584,11 +593,21 @@ add_dependencies(flang_shared
   flang1
   flang2
   ieee_arithmetic
+  omp_lib
   )
 
 add_dependencies(iso_c_bind
   flang1
   flang2
+)
+
+add_dependencies(omp_lib_kinds
+  flang1
+  flang2
+)
+
+add_dependencies(omp_lib
+  omp_lib_kinds
 )
 
 add_dependencies(ieee_arithmetic
