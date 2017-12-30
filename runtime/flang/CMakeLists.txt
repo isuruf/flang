@@ -203,6 +203,7 @@ SET(FTN_INTRINSICS
   mod.c
   mvbits3f.c
   nargs3f.c
+  omp_lib.F95
   outstr3f.c
   packtimeqq3f.c
   perror3f.c
