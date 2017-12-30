@@ -9,6 +9,8 @@ environment:
     CONDA_INSTALL_LOCN: C:\\Miniconda36-x64
     APPVEYOR_SAVE_CACHE_ON_FAILURE: true
 
+os: Visual Studio 2017
+
 platform:
   - x64
 
@@ -18,8 +20,7 @@ install:
   # Add our channels.
   - cmd: conda config --add channels defaults
   - cmd: conda config --add channels conda-forge
-  - cmd: conda install --yes --quiet flang-meta llvmdev clangdev openmp cmake
-
+  - cmd: conda install --yes --quiet flang cmake
   - cmd: conda install --yes -c isuruf kitware-ninja
 
 
@@ -28,7 +29,7 @@ build_script:
 
   - cd build
   - set "PATH=%cd%\bin;%PATH%"
-  - call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
+  - if [%COMPILER%]==[clang-cl] call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" x64
 
   - ps: |
       cmake -G "Ninja" -DFLANG_INCLUDE_TESTS=ON -DFLANG_TEST_VERBOSE_MODE=ON -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_Fortran_COMPILER=flang -DCMAKE_VERBOSE_MAKEFILE=ON -DCMAKE_BUILD_TYPE=Release -DLLVM_INCLUDE_TESTS=ON -DLLVM_MAIN_SRC_DIR=C:\llvm_src ..
