@@ -22,15 +22,11 @@ install:
         cmake
 
   - source activate test-environment
-  - conda install -c isuruf kitware-ninja
-  
-  # For testing
-  - pip install lit
 
 script:
   - mkdir -p build
   - cd build
-  - cmake .. -G "Ninja" -DFLANG_INCLUDE_TESTS=ON -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_Fortran_COMPILER=flang
+  - cmake .. -DFLANG_INCLUDE_TESTS=ON -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_Fortran_COMPILER=flang
   - cmake --build .
 
 notifications:
