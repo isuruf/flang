@@ -15,14 +15,14 @@ install:
   - conda update -q conda
 
   - conda create -q -n test-environment
-        flang-meta 
+        flang-meta
         llvmdev
         clangdev
         openmp
         cmake
 
   - source activate test-environment
-  - conda info -a
+  - conda install -c isuruf kitware-ninja
   
   # For testing
   - pip install lit
@@ -30,13 +30,8 @@ install:
 script:
   - mkdir -p build
   - cd build
-  - cmake -DFLANG_INCLUDE_TESTS=ON -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_Fortran_COMPILER=flang ..
-  - make -j4
-  
-  - cp lib/* $HOME/miniconda/envs/test-environment/lib
-  - cp bin/* $HOME/miniconda/envs/test-environment/bin
-  
-  - make check-flang
+  - cmake .. -G "Ninja" -DFLANG_INCLUDE_TESTS=ON -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_Fortran_COMPILER=flang
+  - cmake --build .
 
 notifications:
     email: false
