@@ -21,9 +21,9 @@ cmake_minimum_required(VERSION 2.8)
 # In order to bootstrap the runtime library we need to skip
 # CMake's Fortran tests
 SET(CMAKE_Fortran_COMPILER_WORKS 1)
-
-
-set(CMAKE_Fortran_PREPROCESS_SOURCE
+SET(CMAKE_Fortran_ABI_COMPILED 0)
+SET(CMAKE_Fortran_COMPILER_SUPPORTS_F90 1)
+SET(CMAKE_Fortran_PREPROCESS_SOURCE
     "<CMAKE_Fortran_COMPILER> -cpp <DEFINES> <INCLUDES> <FLAGS> -E <SOURCE> -o <PREPROCESSED_SOURCE>")
 
 # If we are not building as a part of LLVM, build Flang as an
@@ -359,25 +359,14 @@ include_directories(BEFORE
   ${CMAKE_CURRENT_SOURCE_DIR}/include
   )
 
-if (MSVC)
 # Direct module files to build include directory
 set(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/runtime/flang)
 
 # Install Fortran module files
-# TODO: this creates empty directories. Figure out a workaround or
-# better would be to figure out why CMAKE_Fortran_MODULE_DIRECTORY is different
-install(DIRECTORY ${CMAKE_Fortran_MODULE_DIRECTORY}/
-  DESTINATION include FILES_MATCHING PATTERN *.mod
-  )
-else()
-# Direct module files to build include directory
-set(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include)
-
-# Install Fortran module files
-install(DIRECTORY ${CMAKE_Fortran_MODULE_DIRECTORY}/
-  DESTINATION include
-  )
-endif()
+install(
+    CODE "file(GLOB FLANG_MOD_FILES \"${CMAKE_Fortran_MODULE_DIRECTORY}/*.mod\")"
+    CODE "file(INSTALL \${FLANG_MOD_FILES} DESTINATION \"${CMAKE_INSTALL_PREFIX}/include\")"
+)
 
 # Install Fortran OpenMP include file
 # Copy omp_lib.h file, not the symlink
