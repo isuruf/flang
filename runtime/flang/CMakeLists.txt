@@ -203,8 +203,6 @@ SET(FTN_INTRINSICS
   mod.c
   mvbits3f.c
   nargs3f.c
-  omp_lib_kinds.F95
-  omp_lib.F95
   outstr3f.c
   packtimeqq3f.c
   perror3f.c
@@ -336,12 +334,9 @@ SET(FTN_SUPPORT
   descIntrins.c
   descFioUtil.c
   descRW.c
-  ieee_arithmetic.F95
-  ieee_exceptions.F95
   ieee_features.F95
   initpar.c
   inquire.c
-  iso_c_bind.F95
   iso_fortran_env.f90
   ldread.c
   ldwrite.c
@@ -478,19 +473,31 @@ SET(FTN_SUPPORT
   xfer_rpm1.c
   )
 
-add_library(iso_c_bind
+add_library(iso_c_bind OBJECT
   iso_c_bind.F95
 )
 
-add_library(ieee_arithmetic
+add_library(ieee_arithmetic OBJECT
   ieee_arithmetic.F95
   ieee_exceptions.F95
+)
+
+add_library(omp_lib_kinds OBJECT
+  omp_lib_kinds.F95
+)
+
+add_library(omp_lib OBJECT
+  omp_lib.F95
 )
 
 add_flang_library(flang_static
   ${FTN_INTRINSICS}
   ${FTN_SUPPORT}
   ${SHARED_SOURCES}
+  $<TARGET_OBJECTS:iso_c_bind>
+  $<TARGET_OBJECTS:ieee_arithmetic>
+  $<TARGET_OBJECTS:omp_lib_kinds>
+  $<TARGET_OBJECTS:omp_lib>
   )
   
 if (MSVC)
@@ -504,6 +511,10 @@ add_flang_library(flang_shared
   ${FTN_INTRINSICS}
   ${FTN_SUPPORT}
   ${SHARED_SOURCES}
+  $<TARGET_OBJECTS:iso_c_bind>
+  $<TARGET_OBJECTS:ieee_arithmetic>
+  $<TARGET_OBJECTS:omp_lib_kinds>
+  $<TARGET_OBJECTS:omp_lib>
   )
 set_property(TARGET flang_shared PROPERTY OUTPUT_NAME flang)
 target_link_libraries(flang_shared flangrti_shared)
@@ -555,18 +566,6 @@ set_property(
 ## CMake does not handle module dependencies between Fortran files,
 ## we need to help it
 
-set_source_files_properties(
-  omp_lib_kinds.F95
-  PROPERTIES
-  OBJECT_OUTPUTS ${CMAKE_Fortran_MODULE_DIRECTORY}/omp_lib_kinds.mod
-  )
-
-set_source_files_properties(
-  omp_lib.F95
-  PROPERTIES
-  OBJECT_DEPENDS ${CMAKE_Fortran_MODULE_DIRECTORY}/omp_lib_kinds.mod
-  )
-
 set_target_properties(flang_static flang_shared
   PROPERTIES
   ARCHIVE_OUTPUT_DIRECTORY ${FLANG_RTE_LIB_DIR}
@@ -588,19 +587,26 @@ target_include_directories(flang_shared
 add_dependencies(flang_static 
   flang1
   flang2
-  ieee_arithmetic
   )
 
 # Make sure the compiler is built before we bootstrap
 add_dependencies(flang_shared 
   flang1
   flang2
-  ieee_arithmetic
   )
 
 add_dependencies(iso_c_bind
   flang1
   flang2
+)
+
+add_dependencies(omp_lib_kinds
+  flang1
+  flang2
+)
+
+add_dependencies(omp_lib
+  omp_lib_kinds
 )
 
 add_dependencies(ieee_arithmetic
