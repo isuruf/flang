@@ -29,7 +29,7 @@ build_script:
 
   - cd build
   - set "PATH=%cd%\bin;%PATH%"
-  - if [%COMPILER%]==[clang-cl] call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" x64
+  - call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" x64
 
   - ps: |
       cmake -G "Ninja" -DFLANG_INCLUDE_TESTS=ON -DFLANG_TEST_VERBOSE_MODE=ON -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_Fortran_COMPILER=flang -DCMAKE_VERBOSE_MAKEFILE=ON -DCMAKE_BUILD_TYPE=Release -DLLVM_INCLUDE_TESTS=ON -DLLVM_MAIN_SRC_DIR=C:\llvm_src ..
