@@ -17,5 +17,5 @@
 # Test runner infrastructure for Flang. This configures the Flang test trees
 # for use by Lit, and delegates to LLVM's lit test handlers.
 
-#add_subdirectory(f90_correct)
+# add_subdirectory(f90_correct)
 add_subdirectory(mp_correct)
