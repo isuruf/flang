@@ -334,9 +334,12 @@ SET(FTN_SUPPORT
   descIntrins.c
   descFioUtil.c
   descRW.c
+  ieee_arithmetic.F95
+  ieee_exceptions.F95
   ieee_features.F95
   initpar.c
   inquire.c
+  iso_c_bind.F95
   iso_fortran_env.f90
   ldread.c
   ldwrite.c
@@ -494,10 +497,6 @@ add_flang_library(flang_static
   ${FTN_INTRINSICS}
   ${FTN_SUPPORT}
   ${SHARED_SOURCES}
-  $<TARGET_OBJECTS:iso_c_bind>
-  $<TARGET_OBJECTS:ieee_arithmetic>
-  $<TARGET_OBJECTS:omp_lib_kinds>
-  $<TARGET_OBJECTS:omp_lib>
   )
   
 if (MSVC)
@@ -511,10 +510,6 @@ add_flang_library(flang_shared
   ${FTN_INTRINSICS}
   ${FTN_SUPPORT}
   ${SHARED_SOURCES}
-  $<TARGET_OBJECTS:iso_c_bind>
-  $<TARGET_OBJECTS:ieee_arithmetic>
-  $<TARGET_OBJECTS:omp_lib_kinds>
-  $<TARGET_OBJECTS:omp_lib>
   )
 set_property(TARGET flang_shared PROPERTY OUTPUT_NAME flang)
 target_link_libraries(flang_shared flangrti_shared)
@@ -587,12 +582,16 @@ target_include_directories(flang_shared
 add_dependencies(flang_static 
   flang1
   flang2
+  ieee_arithmetic
+  omp_lib
   )
 
 # Make sure the compiler is built before we bootstrap
 add_dependencies(flang_shared 
   flang1
   flang2
+  ieee_arithmetic
+  omp_lib
   )
 
 add_dependencies(iso_c_bind
