@@ -25,20 +25,23 @@ install:
         clangdev
         openmp
         cmake
+        unzip
 
   - source activate test-environment
   - conda info -a
   
   # For testing
-  #- pip install lit
+  - pip install lit
+  - wget https://raw.githubusercontent.com/isuruf/flang/utils/llvm_utils_for_flang.zip
+  - unzip llvm_utils_for_flang.zip -d $HOME/llvm-utils
 
 script:
   - mkdir -p build
   - cd build
-  - cmake -DCMAKE_INSTALL_PREFIX=$CONDA_PREFIX -DFLANG_INCLUDE_TESTS=ON -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_Fortran_COMPILER=flang ..
+  - cmake -DCMAKE_INSTALL_PREFIX=$CONDA_PREFIX -DLLVM_INCLUDE_TESTS=ON -DLLVM_MAIN_SRC_DIR=$HOME/llvm-utils -DFLANG_TEST_VERBOSE_MODE=ON -DFLANG_INCLUDE_TESTS=ON -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_Fortran_COMPILER=flang ..
   - make -j4
   - make install -j4  
-  #- make check-flang
+  - make check-flang
 
 notifications:
     email: false
