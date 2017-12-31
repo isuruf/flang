@@ -54,7 +54,7 @@ build_script:
 
 test_script:
   - cmd: set "PATH=%MSYS2_ROOT%\usr\bin\;%PATH%"
-  - cmd: nmake FileCheck
+  - cmd: cmake --build . --target FileCheck
   - cmd: copy bin\FileCheck.exe binFileCheck.exe
   - cmd: set "CPATH=%cd%\runtime\flang"
-  - cmd: nmake check-flang
+  - cmd: cmake --build . --target check-flang
