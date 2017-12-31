@@ -56,5 +56,6 @@ test_script:
   - cmd: set "PATH=%MSYS2_ROOT%\usr\bin\;%PATH%"
   - cmd: cmake --build . --target FileCheck
   - cmd: copy bin\FileCheck.exe binFileCheck.exe
-  - cmd: set "CPATH=%cd%\runtime\flang"
+  - cmd: set "CPATH=%CONDA_PREFIX%\Library\include;%CPATH%"
+  - cmd: set "LIB=%CONDA_PREFIX%\Library\lib;%LIB%"
   - cmd: cmake --build . --target check-flang
