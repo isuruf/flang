@@ -6,7 +6,9 @@ branches:
 
 environment:
   global:
+    MSYS2_ROOT: C:\msys64
     CONDA_INSTALL_LOCN: C:\\Miniconda36-x64
+    PYTHON2_LOCN: C:\\Python27-x64
     APPVEYOR_SAVE_CACHE_ON_FAILURE: true
 
 os: Visual Studio 2017
@@ -23,6 +25,9 @@ install:
   - cmd: conda install --yes --quiet llvmdev clangdev flang-meta cmake
   - cmd: conda install --yes -c isuruf kitware-ninja
 
+  - cmd: set "PATH=%PYTHON2_LOCN%\Scripts;%PYTHON2_LOCN%;%PATH%"
+  - cmd: appveyor DownloadFile "https://raw.githubusercontent.com/isuruf/flang/utils/llvm_utils_for_flang.zip" -FileName "utils.zip"
+  - cmd: 7z x -oC:\llvm_src utils.zip
 
 build_script:
   - ps: mkdir build
@@ -45,6 +50,11 @@ build_script:
   - ps: Push-AppveyorArtifact C:\Projects\flang\bin.zip
   - ps: Compress-Archive -Path C:\projects\flang\build\lib -DestinationPath C:\Projects\flang\lib.zip
   - ps: Push-AppveyorArtifact C:\Projects\flang\lib.zip
+  - cmd: cmake --build . --target install
 
 test_script:
-  - cmd: cmake --build . --target install
+  - cmd: set "PATH=%MSYS2_ROOT%\usr\bin\;%PATH%"
+  - cmd: nmake FileCheck
+  - cmd: copy bin\FileCheck.exe binFileCheck.exe
+  - cmd: set "CPATH=%cd%\runtime\flang"
+  - cmd: nmake check-flang
