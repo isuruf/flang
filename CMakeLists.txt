@@ -361,10 +361,13 @@ include_directories(BEFORE
   )
 
 # Direct module files to build include directory
-set(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include)
+set(FLANG_MODULE_DIRECTORY_SHARED ${CMAKE_CURRENT_BINARY_DIR}/include)
+# mod files in the following differs only by the timestamp. This is needed to
+# ensure that flang can be built parallelly. It is discarded after flang is built
+set(FLANG_MODULE_DIRECTORY_STATIC ${CMAKE_CURRENT_BINARY_DIR}/include-static)
 
 # Install Fortran module files
-install(DIRECTORY ${CMAKE_Fortran_MODULE_DIRECTORY}/
+install(DIRECTORY ${FLANG_MODULE_DIRECTORY_SHARED}/
   DESTINATION include
   )
 
