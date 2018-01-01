@@ -530,22 +530,20 @@ set_source_files_properties(
   OBJECT_DEPENDS ${FLANG_MODULE_DIRECTORY_STATIC}/iso_c_binding.mod
   )
 else()
-add_library(iso_c_bind OBJECT
-  iso_c_bind.F95
+add_library(iso_c_bind_static OBJECT
+  iso_c_bind_static.F95
 )
-add_library(ieee_arithmetic OBJECT
-  ieee_arithmetic.F95
-  ieee_exceptions.F95
+set_target_properties(
+  iso_c_bind_static
+  PROPERTIES
+  Fortran_MODULE_DIRECTORY ${FLANG_MODULE_DIRECTORY_STATIC}
 )
-add_dependencies(iso_c_bind
+add_dependencies(iso_c_bind_static
   flang1
   flang2
 )
-add_dependencies(ieee_arithmetic
-  iso_c_bind
-)
 add_dependencies(flang_static
-  ieee_arithmetic
+  iso_c_bind_static
 )
 endif()
 
@@ -583,8 +581,20 @@ set_source_files_properties(
   OBJECT_DEPENDS ${FLANG_MODULE_DIRECTORY_SHARED}/iso_c_binding.mod
   )
 else()
+add_library(iso_c_bind_shared OBJECT
+  iso_c_bind.F95
+)
+set_target_properties(
+  iso_c_bind_shared
+  PROPERTIES
+  Fortran_MODULE_DIRECTORY ${FLANG_MODULE_DIRECTORY_SHARED}
+)
+add_dependencies(iso_c_bind_shared
+  flang1
+  flang2
+)
 add_dependencies(flang_shared
-  ieee_arithmetic
+  iso_c_bind_shared
 )
 endif()
 set(SHARED_LIBRARY FALSE)
