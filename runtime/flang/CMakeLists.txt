@@ -506,6 +506,16 @@ add_library(ieee_arithmetic OBJECT
   ieee_exceptions.F95
 )
 
+set_target_properties(iso_c_bind
+  PROPERTIES
+  Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/include-iso-c-bind
+)
+
+set_target_properties(ieee_arithmetic
+  PROPERTIES
+  Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/include-ieee-arithmetic
+)
+
 set(SHARED_LIBRARY TRUE)
 
 add_flang_library(flang_shared
