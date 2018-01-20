@@ -23,28 +23,29 @@ install:
   - cmd: conda install --yes --quiet llvmdev clangdev flang-meta cmake
   - cmd: conda install --yes -c isuruf kitware-ninja
 
-
 build_script:
   - ps: mkdir build
 
   - cd build
   - set "PATH=%cd%\bin;%PATH%"
   - call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" x64
-  - cmake -G "Ninja" -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX% -DFLANG_INCLUDE_TESTS=ON -DFLANG_TEST_VERBOSE_MODE=ON -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_Fortran_COMPILER=flang -DCMAKE_VERBOSE_MAKEFILE=ON -DCMAKE_BUILD_TYPE=Release -DLLVM_INCLUDE_TESTS=ON -DLLVM_MAIN_SRC_DIR=C:\llvm_src ..
-  - ps: |
-      Push-AppveyorArtifact .\CMakeFiles\CMakeOutput.log
-      Push-AppveyorArtifact .\CMakeFiles\CMakeError.log
+  - cmd: >-
+      cmake -G "Ninja" ^
+      -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX% ^
+      -DFLANG_INCLUDE_TESTS=ON ^
+      -DLLVM_INCLUDE_TESTS=ON ^
+      -DFLANG_TEST_VERBOSE_MODE=ON ^
+      -DCMAKE_C_COMPILER=clang-cl ^
+      -DCMAKE_CXX_COMPILER=clang-cl ^
+      -DCMAKE_Fortran_COMPILER=flang ^
+      -DCMAKE_BUILD_TYPE=Release ^
+      -DLLVM_MAIN_SRC_DIR=C:\llvm_src ^
+      ..
 
-  - ps: |
-      cmake --build . 2>&1 | Out-File build_output.txt
-      if($LastExitCode -ne 0) { $host.SetShouldExit($LastExitCode )  }
-      Push-AppveyorArtifact .\build_output.txt
-      Get-Content .\build_output.txt -Tail 500
+  - ps: Push-AppveyorArtifact .\CMakeFiles\CMakeOutput.log
+  - ps: Push-AppveyorArtifact .\CMakeFiles\CMakeError.log
 
-  - ps: Compress-Archive -Path C:\projects\flang\build\bin -DestinationPath C:\Projects\flang\bin.zip
-  - ps: Push-AppveyorArtifact C:\Projects\flang\bin.zip
-  - ps: Compress-Archive -Path C:\projects\flang\build\lib -DestinationPath C:\Projects\flang\lib.zip
-  - ps: Push-AppveyorArtifact C:\Projects\flang\lib.zip
+  - cmake --build .
 
 test_script:
   - cmd: cmake --build . --target install
