@@ -233,6 +233,9 @@ llvm_restart:
 
   if (gbl.maxsev < 3 && (flg.object || flg.code) && !DBGBIT(2, 4)) {
 
+    if (flg.debug)
+      process_global_lifetime_debug();
+
     gbl.multi_func_count++;
     gbl.nofperror = TRUE;
     if (gbl.rutype == RU_BDATA) {
@@ -625,9 +628,6 @@ init(int argc, char *argv[])
 
   /* Run argument parser */
   parse_arguments(arg_parser, argc, argv);
-
-  /* FIXME Override IEEE mode setting, RTL does not support fastmath yet */
-  flg.ieee = 1;
 
   /* Process debug output settings */
   if (was_value_set(arg_parser, &(flg.dbg)) ||

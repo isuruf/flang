@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 1993-2018, NVIDIA CORPORATION.  All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -422,7 +422,13 @@ struct const_init {
 #define AC_I_ior 46
 #define AC_I_ieor 47
 #define AC_I_merge 48
-
+#define AC_I_lshift 49
+#define AC_I_rshift 50
+#define AC_I_maxloc 51
+#define AC_I_maxval 52
+#define AC_I_minloc 53
+#define AC_I_minval 54
+#define AC_I_scale 55
 #define AC_UNARY_OP(e) (e.op == AC_NEG || e.op == AC_CONV)
 
 typedef struct {  /* STRUCTURE stack entries */
@@ -787,12 +793,14 @@ extern int rdilms(void);
 extern void rewindilms(void);
 #if DEBUG
 /* FIXME those two functions do the same thing, also see _dumpilms */
-extern void dmpilms();
-extern void dumpilms();
+void dmpilms(void);
+void dumpilms(void);
 #endif
-extern ILM_T *save_ilms(int);
-extern void dinit(); /* dinit.c */
-extern LOGICAL dinit_ok();
+ILM_T *save_ilms(int);
+void dinit(VAR *ivl, CONST *ict); /* dinit.c */
+bool dinit_ok(int);
+void dmp_ivl(VAR *, FILE *);
+void dmp_ict(CONST *, FILE *);
 extern void semfin(); /* semfin.c */
 extern int mklogopnd();
 int declref(int, int, int); /* semsym.c */

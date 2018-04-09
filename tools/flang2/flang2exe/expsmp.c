@@ -1875,8 +1875,15 @@ exp_smp(ILM_OP opc, ILM *ilmp, int curilm)
     }
     argilm = ILM_OPND(ilmp, 2);
     sym = ILM_OPND((ILM *)(ilmb.ilm_base + argilm), 1);
-    size = size_of(DTYPEG(sym));
-    sz = ad_kconi(size);
+    sz = 0;
+    if (SCG(sym) == SC_DUMMY && DTY(DTYPEG(sym)) != TY_PTR &&
+        (DDTG(DTYPEG(sym)) == DT_ASSCHAR)) {
+      sz = charlen(sym);
+    }
+    if (sz == 0) {
+      size = size_of(DTYPEG(sym));
+      sz = ad_kconi(size);
+    }
     sptrListAdd(&copysptr_list, sym, sz, FALSE, 0, 0, sym);
     break;
 
@@ -2025,15 +2032,14 @@ exp_smp(ILM_OP opc, ILM *ilmp, int curilm)
       taskLoopCnt++;
 
       if (taskBv & MP_TASK_IF) {
-        int lab = getlab();
-        RFCNTI(lab);
-        TASKLP_IF = ad_icon(1);
-        ili = ad3ili(IL_ICJMPZ, taskIfv, CC_NE, lab);
-        chk_block(ili);
-        TASKLP_IF = ad_icon(0);
-        exp_label(lab);
+        int tmp0, tmp1;
+        tmp0 = ad_icon(0);
+        taskIfv = sel_iconv(taskIfv, 0);
+        ili = ad3ili(IL_ICMP, taskIfv, tmp0, CC_EQ);
+        tmp1 = ad_icon(1);
+        TASKLP_IF = ad3ili(IL_ISELECT, ili, tmp1, tmp0);
       } else {
-        TASKLP_IF = ad_icon(0);
+        TASKLP_IF = ad_icon(1);
       }
       if (taskBv & MP_TASK_NOGROUP) {
         TASKLP_NOGROUP = ad_icon(1);

@@ -506,7 +506,6 @@ semantio(int rednum, SST *top)
   int last_inquire_val;
   ITEM *itemp;
   char *strptr;
-  int rhstop;
   LOGICAL needDescr;
 
   switch (rednum) {
@@ -1146,9 +1145,11 @@ semantio(int rednum, SST *top)
                 } else {
                   tast = (arglist->next->next->next->next)->ast;
                 }
-                asn = mk_assn_stmt(ast_ioret(), tast, DT_INT);
-                (void)add_stmt(asn);
-                tast = add_cgoto(asn);
+                sptr1 = mk_iofunc(RTE_f90io_dts_stat, DT_NONE, 0);
+                ast1 = begin_io_call(A_CALL, sptr1, 1);
+                (void)add_io_arg(mk_unop(OP_VAL, tast, DT_INT4));
+                (void)add_stmt(ast1);
+                (void)add_cgoto(tast);
               }
               break;
             } else {
@@ -2602,7 +2603,10 @@ semantio(int rednum, SST *top)
           (void)add_io_arg(PTARG(PT_UNIT));
           (void)add_io_arg(PTARG(PT_REC));
           (void)add_io_arg(mk_cval(bitv, DT_INT));
-          (void)add_io_arg(PTARG(PT_IOSTAT));
+          if (bitv & BITV_IOSTAT)
+            (void)add_io_arg(PTARG(PT_IOSTAT));
+          else
+            (void)add_io_arg(mk_fake_iostat());
           ast = end_io_call();
         } else {
           if (is_read) {
@@ -4127,24 +4131,24 @@ semantio(int rednum, SST *top)
 
   /* ------------------------------------------------------------------ */
   /*
+   *	<dt vlist> ::= <dt vlist> , <addop> <integer>
    *	<dt vlist> ::= <dt vlist> , <integer>
-   */
-  case DT_VLIST1:
-    rhstop = 3;
-    goto common_dt_vlist;
-  /*
+   *	<dt vlist> ::= <addop> <integer>
    *	<dt vlist> ::= <integer>
    */
+  case DT_VLIST1:
   case DT_VLIST2:
-    rhstop = 1;
-
-  common_dt_vlist:
+  case DT_VLIST3:
+  case DT_VLIST4:
+    count = DT_VLIST4 + 1 - rednum; // RHS symbol count:  4, 3, 2, or 1
+    if ((count == 2 || count == 4) && SST_OPTYPEG(RHS(count-1)) == OP_SUB)
+      SST_CVALP(RHS(count), -SST_CVALG(RHS(count))); // negate <integer>
     e1 = (SST *)getitem(0, sizeof(SST));
-    *e1 = *RHS(rhstop);
+    *e1 = *RHS(count);
     itemp = (ITEM *)getitem(0, sizeof(ITEM));
     itemp->next = ITEM_END;
     itemp->t.stkp = e1;
-    if (rhstop == 1) {
+    if (count <= 2) {
       SST_BEGP(LHS, itemp);
     } else {
       (SST_ENDG(RHS(1)))->next = itemp;
@@ -4285,7 +4289,6 @@ fix_iostat(void)
 {
   if (PTV(PT_IOSTAT) == 0)
     PTV(PT_IOSTAT) = astb.i0;
-
 }
 
 static int
@@ -4309,6 +4312,7 @@ add_cgoto(int ast)
   int lbsptr;
   int tmp;
   int last_ast;
+  int inquire_cnt = 13;
 
   if (A_TYPEG(ast) == A_ASN)
     ast = A_DESTG(ast);
@@ -4316,7 +4320,7 @@ add_cgoto(int ast)
   if (strcmp(SYMNAME(A_SPTRG(A_LOPG(io_call.ast))),
              mkRteRtnNm(RTE_f90io_fmtr_end)) == 0 ||
       strncmp(SYMNAME(A_SPTRG(A_LOPG(io_call.ast))),
-              mkRteRtnNm(RTE_f90io_inquire), 15) == 0) {
+              mkRteRtnNm(RTE_f90io_inquire), inquire_cnt) == 0) {
     int asn = chk_SIZE_var();
     if (asn) {
       add_stmt_after(asn, (int)STD_PREV(0));
@@ -5983,14 +5987,12 @@ gen_dtio_args(SST *stkptr, int arg1, int iotype_ast, int vlist_ast)
     else
       tast = mk_assn_stmt(iostat_ast, astb.i0, argdtyp);
     (void)add_stmt(tast);
-  } else if (A_DTYPEG(iostat_ast) != argdtyp) {
-    iostat_ast = mk_convert(iostat_ast, argdtyp);
-    SST_IDP(p->t.stkp, S_EXPR);
   }
   p->ast = iostat_ast;
   SST_ASTP(p->t.stkp, iostat_ast);
   SST_DTYPEP(p->t.stkp, A_DTYPEG(iostat_ast));
   SST_SYMP(p->t.stkp, A_SPTRG(iostat_ast));
+  SST_IDP(p->t.stkp, S_IDENT);
   SST_PARENP(p->t.stkp, 0);
   SST_SHAPEP(p->t.stkp, 0);
 

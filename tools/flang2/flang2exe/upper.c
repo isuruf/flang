@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 1997-2018, NVIDIA CORPORATION.  All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -80,7 +80,7 @@ static void read_Entry(void);
 static void read_program(void);
 static void read_ipainfo(void);
 static int newindex(int);
-static int newinfo();
+static int newinfo(void);
 static void fix_datatype(void);
 static void fix_symbol(void);
 static int create_thread_private_vector(int, int);
@@ -1929,6 +1929,7 @@ read_symbol(void)
   int inmodproc, cudamodule, datacnst, fwdref;
   int agoto, parref, parsyms, parsymsct, paruplevel;
   int typedef_init;
+  int alldefaultinit;
   int tpalloc;
   ISZ_T address, size;
   sptr = getval("symbol");
@@ -2066,6 +2067,10 @@ read_symbol(void)
     newsptr = get_or_create_symbol(sptr);
     if (class) {
       CLASSP(newsptr, class);
+    }
+
+    if (target) {
+      TARGETP(newsptr, 1);
     }
 
     if (reref) {
@@ -3002,6 +3007,7 @@ read_symbol(void)
       parent = getval("parent");
       descriptor = getval("descriptor");
       class = getbit("class");
+      alldefaultinit = getbit("alldefaultinit");
       unlpoly = getbit("unlpoly");
       isoctype = getbit("isoctype");
       typedef_init = getval("typedef_init");
@@ -3021,6 +3027,7 @@ read_symbol(void)
     PARENTP(newsptr, parent);
     SDSCP(newsptr, descriptor);
     CLASSP(newsptr, class);
+    ALLDEFAULTINITP(newsptr, alldefaultinit);
     UNLPOLYP(newsptr, unlpoly);
     ISOCTYPEP(newsptr, isoctype);
     TYPDEF_INITP(newsptr, typedef_init);

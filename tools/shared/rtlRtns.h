@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2016-2018, NVIDIA CORPORATION.  All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,8 +47,10 @@ typedef enum {
   RTE_alloc04m,
   RTE_alloc04p,
   RTE_allocated,
+  RTE_allocated_lhs,
   RTE_amodulev,
   RTE_amodulov,
+  RTE_asn_closure,
   RTE_auto_alloc,
   RTE_auto_alloc04,
   RTE_auto_alloc04m,
@@ -75,13 +77,25 @@ typedef enum {
   RTE_cmplx32,
   RTE_cmplx8,
   RTE_conformable,
+  /* diff from previous three is to 
+   * pass value, not address */
+  RTE_conformable_11v,
+  RTE_conformable_1dv,
+  RTE_conformable_22v,
+  RTE_conformable_2dv,
+  RTE_conformable_33v,
+  RTE_conformable_3dv,
+  RTE_conformable_d1v,
+  RTE_conformable_d2v,
+  RTE_conformable_d3v,
   RTE_conformable_dd,
-  RTE_conformable_dn,
-  RTE_conformable_nd,
-  RTE_conformable_nn,
+  RTE_conformable_dnv,
+  RTE_conformable_ndv,
+  RTE_conformable_nnv,
   RTE_copy_f77_argl,
   RTE_copy_f77_argsl,
   RTE_copy_f90_argl,
+  RTE_copy_proc_desc,
   RTE_dble,
   RTE_dceiling,
   RTE_dceilingv,
@@ -598,6 +612,7 @@ typedef enum {
   RTE_f90io_close,
   RTE_f90io_dts_fmtr,
   RTE_f90io_dts_fmtw,
+  RTE_f90io_dts_stat,
   RTE_f90io_encode_fmt,
   RTE_f90io_encode_fmtv,
   RTE_f90io_end,
