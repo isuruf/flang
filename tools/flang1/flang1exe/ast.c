@@ -142,7 +142,7 @@ ast_init(void)
 #endif
   }
   astb.argt.avl = 1;
-  astb.argt.base[0] = 1;
+  astb.argt.base[0] = 0;
 
   if (astb.comstr.size <= 0) {
     astb.comstr.size = 200;
@@ -608,6 +608,12 @@ mk_isz_cval(ISZ_T v, DTYPE dtype)
     return mk_cval1(getcon(num, DT_INT8), DT_INT8);
   }
   return mk_cval(v, dtype);
+}
+
+int
+mk_fake_iostat()
+{
+  return mk_id(get_temp(astb.bnd.dtype));
 }
 
 /** \brief Make a constant AST given the actual (single word) value or
@@ -2715,6 +2721,7 @@ sym_of_ast2(int ast)
   case A_SUBSTR:
   case A_CONV:
   case A_FUNC:
+  case A_CALL:
     return sym_of_ast2(A_LOPG(ast));
   case A_MEM:
     return sym_of_ast2(A_PARENTG(ast));
@@ -2746,6 +2753,7 @@ pass_sym_of_ast(int ast)
     case A_ENTRY:
       return A_SPTRG(ast);
     case A_FUNC:
+    case A_CALL:
     case A_SUBSCR:
     case A_SUBSTR:
       ast = A_LOPG(ast);
@@ -2788,6 +2796,7 @@ memsym_of_ast(int ast)
       ast = A_MEMG(ast);
       break;
     case A_FUNC:
+    case A_CALL:
       ast = A_LOPG(ast);
       break;
     default:
@@ -3763,18 +3772,17 @@ move_stmts_after(int std, int stdafter)
 void
 ast_to_comment(int ast)
 {
-  int newast;
-  int std;
-  int par;
+  int std = A_STDG(ast);
+  int par = STD_PAR(std);
+  int accel = STD_ACCEL(std);
+  int newast = mk_stmt(A_COMMENT, 0);
 
-  newast = mk_stmt(A_COMMENT, 0);
   A_LOPP(newast, ast);
-  std = A_STDG(ast);
   STD_AST(std) = newast;
   A_STDP(newast, std);
-  par = STD_PAR(std);
   STD_FLAGS(std) = 0;
   STD_PAR(std) = par;
+  STD_ACCEL(std) = accel;
 }
 
 int
@@ -8371,7 +8379,8 @@ cngcon(INT oldval, int oldtyp, int newtyp)
       unum[0] = 0;
       unum[1] = oldval;
       return getcon((INT *)unum, newtyp);
-    } else if (TY_ISINT(from)) {
+    } else if (TY_ISINT(from) || 
+               (TY_ISLOG(to) && TY_ISLOG(from))) {
       if (oldval < 0) {
         num[0] = -1;
         num[1] = oldval;

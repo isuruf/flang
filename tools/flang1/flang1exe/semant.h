@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 1994-2018, NVIDIA CORPORATION.  All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -618,6 +618,11 @@ typedef enum {
   AC_I_merge,
   AC_I_lshift,
   AC_I_rshift,
+  AC_I_maxloc,
+  AC_I_maxval,
+  AC_I_minloc,
+  AC_I_minval,
+  AC_I_scale,
 } AC_INTRINSIC;
 
 #define BINOP(p) ((p)->op != AC_NEG && (p)->op != AC_CONV)
@@ -1048,17 +1053,18 @@ int is_parameter_context();
 int get_entity_access();
 
 typedef struct {    /* deferred procedure interface */
-  int iface;        /* sptr of interface name */
-  int dtype;        /* dtype of TY_PROC data type record */
-  int proc;         /* sptr of external/dummy procedure */
-  int mem;          /* sptr of the procedure member/component */
+  SPTR iface;       /* sptr of interface name */
+  DTYPE dtype;      /* dtype of TY_PROC data type record */
+  SPTR proc;        /* sptr of external/dummy procedure */
+  SPTR mem;         /* sptr of the procedure member/component */
   int lineno;       /* line number of the statement */
   char *iface_name; /* iface name string */
   int pass_class;   /* set if pass arg has class set */
   char *tag_name;   /* name of pass arg dtype tag */
   int sem_pass;     /* semantic pass that this symbol was set */
   int stype;        /* STYPE of iface */
-  int scope;        /* scope of the procedure pointer declaration */
+  SPTR scope;       /* scope of the procedure pointer declaration */
+  SPTR proc_var;    /* the procedure variable */
 } IFACE;
 
 typedef struct ident_proc_list {

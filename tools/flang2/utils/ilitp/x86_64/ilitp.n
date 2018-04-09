@@ -1,5 +1,5 @@
 .\"/*
-.\" * Copyright (c) 1994-2017, NVIDIA CORPORATION.  All rights reserved.
+.\" * Copyright (c) 1994-2018, NVIDIA CORPORATION.  All rights reserved.
 .\" *
 .\" * Licensed under the Apache License, Version 2.0 (the "License");
 .\" * you may not use this file except in compliance with the License.
@@ -2578,7 +2578,7 @@ etc.
   \'op1' is the source address.
   \'op2' is the destination address.
   \'nme1' is the names table entry for source struct.
-  \'nme2' is the namse table entry for the destination struct.
+  \'nme2' is the names table entry for the destination struct.
   \'stc' is the dtype of the struct.
 .AT other null trm dom
 .CG notCG
@@ -2592,8 +2592,23 @@ Structure copy.
 .AT other null trm dom
 .CG terminal "movs"
 
+.IL SMOVEJ arlnk arlnk nme nme stc
+Simple structure copy.  (MOVS is x86 parlance.)
+This is used to replace the SMOVEI/SMOVES pair, which was used when
+the ILI operand count was only 4.
+\'op1' is the source address
+\'op2' is the destination address
+\'nme1' is the names table entry for source struct.
+\'nme2' is the names table entry for the destination struct.
+\'op5' is actual number of bytes to copy.
+This gets turned into SMOVE and load/store operations by rm_smove
+.AT other null trm dom
+.CG notCG
+
 .IL SMOVEI arlnk arlnk stc nme
 Simple structure copy.  (MOVS is x86 parlance.)
+\'op1' is arlnk to SMOVES
+\'op2' is the destination address
 \'op3' is actual number of bytes to copy.
 \'nme' is names table entry for destination struct.
 This gets turned into SMOVE and load/store operations by rm_smove
@@ -2602,6 +2617,7 @@ This gets turned into SMOVE and load/store operations by rm_smove
 
 .IL SMOVES arlnk nme
 Simple structure copy source operand (SMOVEI operand 2)
+\'op1' is the source address.
 \'nme' is names table entry for source struct.
 This gets turned into SMOVE and load/store operations by rm_smove
 .AT other null ar dom
@@ -5153,21 +5169,24 @@ Link to a list of clauses.
 .AT other null trm
 .CG notCG
 
-.IL ACCSLOOP lnk
+.IL ACCSLOOP lnk stc
 The following loop in a serial region is to be targeted for the accelerator.
 Link to a list of clauses.
+The second operand is one when this loop is tightly nested in the compute construct, and zero otherwise;
 .AT other null trm
 .CG notCG
 
-.IL ACCKLOOP lnk
+.IL ACCKLOOP lnk stc
 The following loop in a kernels region is to be targeted for the accelerator.
 Link to a list of clauses.
+The second operand is one when this loop is tightly nested in the compute construct, and zero otherwise;
 .AT other null trm
 .CG notCG
 
-.IL ACCPLOOP lnk
+.IL ACCPLOOP lnk stc
 The following loop in a parallel region is to be targeted for the accelerator.
 Link to a list of clauses.
+The second operand is one when this loop is tightly nested in the compute construct, and zero otherwise;
 .AT other null trm
 .CG notCG
 

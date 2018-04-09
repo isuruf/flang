@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997-2017, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 1997-2018, NVIDIA CORPORATION.  All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -234,7 +234,8 @@ lower_make_all_descriptors(void)
         /* module symbols */
         if (!POINTERG(sptr) && SDSCG(sptr) != 0 &&
             STYPEG(SDSCG(sptr)) != ST_PARAM) {
-          if (!ASSUMSHPG(sptr) || !XBIT(54, 2)) {
+          if (!ASSUMSHPG(sptr) || (!XBIT(54, 2) &&
+              !(XBIT(58, 0x400000) && TARGETG(sptr)))) {
             /* set SDSCS1 for sdsc */
             SDSCS1P(SDSCG(sptr), 1);
           }
@@ -696,7 +697,8 @@ fill_adjustable_array_dtype(int dtype, int assumedshape, int stride1,
     lw = ADD_LWAST(dtype, i);
     if (lw != 0 && A_ALIASG(lw))
       lw = A_ALIASG(lw);
-    if (lw == 0 && assumedshape && !XBIT(54, 2)) {
+    if (lw == 0 && assumedshape && !XBIT(54, 2) && 
+        !(XBIT(58, 0x400000) && TARGETG(sptr))) {
       ADD_LWAST(dtype, i) = astb.bnd.one;
       lwsym = 0;
       lwval = 1;
@@ -2893,7 +2895,8 @@ lower_put_datatype(int dtype, int usage)
       }
       if (zbase) {
         zbase = 0;
-        if (usage == 1)
+        /*We need to avoid the case that logic array has been used for intrinsics*/
+        if (usage == 1 && ndim)
           lerror("array zero-base is not a symbol for datatype %d", dtype);
       }
     }
@@ -4453,12 +4456,22 @@ lower_symbol(int sptr)
     putval("parent", 0);
     putval("descriptor", 0);
     putbit("class", 0);
+    if (all_default_init(DTYPEG(sptr))) {
+      putbit("alldefaultinit", 1);
+    } else {
+      putbit("alldefaultinit", 0);
+    }
     putbit("unlpoly", 0);
     putbit("isocbind", 0);
 #else
     putval("parent", PARENTG(sptr));
     putval("descriptor", SDSCG(sptr));
     putbit("class", CLASSG(sptr));
+    if (all_default_init(DTYPEG(sptr))) {
+      putbit("alldefaultinit", 1);
+    } else {
+      putbit("alldefaultinit", 0);
+    }
     putbit("unlpoly", UNLPOLYG(sptr));
     putbit("isoctype", ISOCTYPEG(sptr));
     putval("typedef_init", TYPDEF_INITG(sptr));

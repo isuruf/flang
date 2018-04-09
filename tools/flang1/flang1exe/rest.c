@@ -1043,6 +1043,46 @@ copy_desc_to_bnds_vars(int sptrdest, int desc, int memdesc, int std)
   }
 }
 
+static void
+get_invoking_proc_desc(int sptr, int ast, int std)
+{
+  int tmp, dtype, sdsc, newargt;
+  int func, astnew, sc;
+
+  if (!is_procedure_ptr(sptr))
+    return;
+  sdsc = SDSCG(sptr);
+  if (STYPEG(sptr) == ST_MEMBER) {
+    sdsc  = get_member_descriptor(sptr);
+    if (sdsc <= NOSYM) {
+      sdsc = SDSCG(sptr);
+    }
+  } else {
+    sdsc = SDSCG(sptr);
+  }
+
+  if (sdsc <= NOSYM) {
+    get_static_descriptor(sptr);
+    sdsc = SDSCG(sptr);
+  }
+
+  if (STYPEG(sdsc) == ST_MEMBER) {
+    dtype = DTYPEG(sptr);
+    tmp  = getcctmp_sc('d', sem.dtemps++, ST_VAR, dtype, sem.sc);
+    POINTERP(tmp, 1);
+    DTYPEP(tmp, dtype);
+    get_static_descriptor(tmp); 
+    A_INVOKING_DESCP(ast, mk_id(SDSCG(tmp)));
+    newargt = mk_argt(2);
+    ARGT_ARG(newargt, 0) = A_INVOKING_DESCG(ast);
+    ARGT_ARG(newargt, 1) = check_member(A_LOPG(ast), mk_id(sdsc));
+    func = mk_id(sym_mkfunc_nodesc(mkRteRtnNm(RTE_copy_proc_desc), DT_NONE));
+    astnew = mk_func_node(A_CALL, func, 2, newargt);
+    add_stmt_before(astnew, std);
+  }
+}
+
+
 
 /** \brief The following code takes a function or subroutine call and adds
    section
@@ -1170,6 +1210,7 @@ transform_call(int std, int ast)
   } else {
     is_hcc = 0;
     is_ent = 0;
+    get_invoking_proc_desc(entry,ast,std);
   }
   if (is_ent && NODESCG(entry)) {
     if (STYPEG(entry) != ST_INTRIN && !EXPSTG(entry))
@@ -1228,14 +1269,47 @@ transform_call(int std, int ast)
       ++newnargs;
     }
 #if DEBUG
-    else if (is_ent && strcmp(SYMNAME(entry), mkRteRtnNm(RTE_show)) == 0)
+    else if (is_ent && strcmp(SYMNAME(entry), mkRteRtnNm(RTE_show)) == 0) {
       ++newnargs;
+    }
 #endif
     else if (XBIT(57, 0x4000000) && i == 0 && is_ent &&
              (strcmp(SYMNAME(entry), "pgi_get_descriptor") == 0 ||
               strcmp(SYMNAME(entry), "pgi_put_descriptor") == 0))
       ++newnargs;
   }
+
+  if (!CFUNCG(entry) && !dscptr) {
+    /* check to see if we need implicit procedure descriptors */
+    for (i = 0; i < nargs; ++i) {
+      ele = ARGT_ARG(argt, i);
+      if (A_TYPEG(ele) == A_ID && IS_PROC(STYPEG(sym_of_ast(ele))) ) {
+        ++newnargs;
+      }
+    }
+  } else if (sem.which_pass > 0 && dscptr) {
+    /* make sure interfaces of procedure arguments match interfaces of
+     * dummy arguments.
+     */
+    for (i = 0; i < nargs; ++i) {
+      ele = ARGT_ARG(argt, i);
+      if (A_TYPEG(ele) == A_ID && IS_PROC(STYPEG(sym_of_ast(ele))) ) {
+        int proc = sym_of_ast(ele);
+        int dpdsc = 0, dpdsc2 = 0;
+        inface_arg = aux.dpdsc_base[dscptr + i];
+        proc_arginfo(proc, NULL, &dpdsc, NULL);
+        proc_arginfo(inface_arg, NULL, &dpdsc2, NULL);
+        if (IS_PROC(STYPEG(inface_arg)) && (!TYPDG(proc) || dpdsc != 0) &&
+            (!TYPDG(inface_arg) || dpdsc2 != 0) &&
+            !cmp_interfaces_strict(proc, inface_arg, 
+                                  (IGNORE_ARG_NAMES|RELAX_STYPE_CHK|
+                                   RELAX_INTENT_CHK))) {
+          error(1009,ERR_Severe,gbl.lineno,SYMNAME(proc),SYMNAME(inface_arg));
+        }
+      }
+    }
+  }
+        
   newargt = mk_argt(newnargs);
   newi = 0;
   /* put original arguments, and the in-line reflected copies */
@@ -1249,6 +1323,7 @@ transform_call(int std, int ast)
     /* initialize */
     ARGT_ARG(newargt, newi) = ele;
     ++newi;
+
   }
   newj = newi;
   newi = istart;
@@ -1260,9 +1335,22 @@ transform_call(int std, int ast)
       needdescr = 0;
       if (is_hcc)
         needdescr = 1;
+
+      if (!CFUNCG(entry) && !dscptr && A_TYPEG(ele) == A_ID && 
+          IS_PROC(STYPEG(sym_of_ast(ele)))) {
+        /* add implicit procedure descriptor argument */
+        int tmp = get_proc_ptr(sym_of_ast(ele));
+        if (INTERNALG(sym_of_ast(ele))) {
+          add_ptr_assign(mk_id(tmp), ele, std);
+        }
+        ARGT_ARG(newargt, newj) = mk_id(SDSCG(tmp));
+        ++newj;
+      }
+
 #if DEBUG
-      if (is_ent && strcmp(SYMNAME(entry), mkRteRtnNm(RTE_show)) == 0)
+      if (is_ent && strcmp(SYMNAME(entry), mkRteRtnNm(RTE_show)) == 0) {
         needdescr = 1;
+      }
 #endif
       if (XBIT(57, 0x4000000) && i == 0 && is_ent &&
           (strcmp(SYMNAME(entry), "pgi_get_descriptor") == 0 ||
@@ -1407,9 +1495,19 @@ transform_call(int std, int ast)
       if (STYPEG(sptr) == ST_PROC) {
         ARGT_ARG(newargt, newi) = ele;
         ++newi;
+        needdescr = needs_descriptor(inface_arg);
         if (needdescr) {
-          ty = dtype_to_arg(A_DTYPEG(ele));
-          ARGT_ARG(newargt, newj) = pghpf_type(ty);
+          if (STYPEG(sptr) == ST_PROC) {
+            int tmp = get_proc_ptr(sptr);
+            if (INTERNALG(sptr)) {
+              add_ptr_assign(mk_id(tmp), ele, std);
+              A_INVOKING_DESCP(ast, mk_id(SDSCG(tmp)));
+            }
+            ARGT_ARG(newargt, newj) = mk_id(SDSCG(tmp));
+          } else {
+            ty = dtype_to_arg(A_DTYPEG(ele));
+            ARGT_ARG(newargt, newj) = pghpf_type(ty);
+          }
           ++newj;
         }
         break;
@@ -1456,9 +1554,20 @@ transform_call(int std, int ast)
             if (!SDSCG(sptr)) {
               get_static_type_descriptor(sptr);
             }
-          } else {
-            check_alloc_ptr_type(sptr, std, 0, unl_poly ? 2 : 1, 0, 0, 0);
-            if (unl_poly) {
+          } else { 
+            /* make sure we assign the type of the actual argument to a
+             * descriptor argument. This descriptor argument may be a 
+             * new descriptor if the actual argument does not normally take
+             * a descriptor or the argument's (previously assigned) descriptor
+             * if the argument requires a descriptor.
+             */
+            check_alloc_ptr_type(sptr, std, 0, unl_poly ? 2 : 1, 0, 0,
+                                 STYPEG(sptr) == ST_MEMBER ? ele : 0);
+            if (!needdescr && unl_poly) { 
+              /* initialize the descriptor only if it's a new descriptor
+               * (i.e., the actual argument normally does not take a 
+               *  descriptor).
+               */
               int descr_length_ast =
                     symbol_descriptor_length_ast(sptr, 0 /*no AST*/);
               if (descr_length_ast > 0) {
@@ -1563,7 +1672,8 @@ transform_call(int std, int ast)
                * actual argument. Call check_alloc_ptr_type() to generate
                * a descriptor argument for the actual argument.
                */
-              check_alloc_ptr_type(sptr, std, 0, unl_poly ? 2 : 1, 0, 0, 0);
+              check_alloc_ptr_type(sptr, std, 0, unl_poly ? 2 : 1, 0, 0,
+                                   STYPEG(sptr) == ST_MEMBER ? ele : 0);
               sptrsdsc = SDSCG(sptr);
             }
             tmp = mk_id(sptrsdsc);
@@ -1809,7 +1919,8 @@ transform_call(int std, int ast)
           }
           ARGT_ARG(newargt, newj) = check_member(ele, mk_id(sptrsdsc));
           ++newj;
-        } else if (!A_SHAPEG(ele)) { /* scalar */
+        } else if (!A_SHAPEG(ele) && 
+                   DTY(A_DTYPEG(ele)) != TY_PTR) { /* scalar */
           ty = dtype_to_arg(A_DTYPEG(ele));
           ARGT_ARG(newargt, newj) = pghpf_type(ty);
           ++newj;
@@ -2075,8 +2186,9 @@ stride_1_dummy(int entry, int arr, int pos)
     return TRUE;
   }
   if (XBIT(57, 0x10000) && ASSUMSHPG(dummy_sptr) && SDSCS1G(dummy_sptr) &&
-      !XBIT(54, 2)) {
-    /* assumed-shape dummies must be stride-1 */
+      !XBIT(54, 2) &&
+      !(XBIT(58, 0x400000) && TARGETG(dummy_sptr))) {
+    /* assumed-shape dummies usually must be stride-1 */
     return TRUE;
   }
   return FALSE;
@@ -2204,7 +2316,7 @@ handle_seq_section(int entry, int arr, int loc, int std, int *retval,
       /* for F90, an assumed-shape dummy array looks like
        * a sequential pointer, if copy-ins are removed */
       if (XBIT(57, 0x10000) && ASSUMSHPG(arraysptr) && SDSCS1G(arraysptr) &&
-          !XBIT(54, 2))
+          !XBIT(54, 2) && !(XBIT(58, 0x400000) && TARGETG(arraysptr)))
         is_seq_pointer = TRUE;
       break;
     case A_SUBSCR:
@@ -3054,6 +3166,7 @@ rename_forall_list(int forall)
   A_ARRASNP(newforall, A_ARRASNG(forall));
   A_STARTP(newforall, A_STARTG(forall));
   A_NCOUNTP(newforall, A_NCOUNTG(forall));
+  A_CONSTBNDP(newforall, A_CONSTBNDG(forall));
 
   return newforall;
 }

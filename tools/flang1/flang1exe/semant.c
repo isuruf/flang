@@ -111,6 +111,7 @@ static LOGICAL ignore_common_decl(void);
 static void record_func_result(int func_sptr, int func_result_sptr,
                                LOGICAL in_ENTRY);
 static bool bindingNameRequiresOverloading(SPTR sptr);
+static void clear_iface(int i, SPTR iface);
 
 static IFACE *iface_base;
 static int iface_avail;
@@ -191,7 +192,7 @@ static int end_of_host;
 #define ET_INTRINSIC 5
 #define ET_OPTIONAL 6
 #define ET_PARAMETER 7
-#define ET_POINTER 8
+#define ET_POINTER  8 
 #define ET_SAVE 9
 #define ET_TARGET 10
 #define ET_AUTOMATIC 11
@@ -937,10 +938,12 @@ semant1(int rednum, SST *top)
 
     if (!sem.interface && sem.pgphase < PHASE_EXEC &&
         (is_exe_stmt = is_executable(sem.tkntyp))) {
-      if (!IN_MODULE)
-        do_iface(1);
+
+      if (!IN_MODULE) 
+        do_iface(0); 
       else
         do_iface_module();
+
       reloc_byvalue_parameters();
       if (sem.which_pass == 1 && restored == 0) {
         restore_internal_subprograms();
@@ -1021,7 +1024,7 @@ semant1(int rednum, SST *top)
           par_pop_scope();
           break;
         case DI_TARGPARDO:
-          sem.doif_depth--; /* remove from TARGET PARALLE DO stack */
+          sem.doif_depth--; /* remove from TARGET PARALLEL DO stack */
           p = "OMP TARGET PARALLEL DO";
           par_pop_scope();
           break;
@@ -1040,7 +1043,7 @@ semant1(int rednum, SST *top)
             /* if the previous stack id is DI_TEAMS
              * and scn.stmtyp != TK_MP_ENDTEAMS, then
              * this is target teams distribute parallel do
-             * constrct: pop teams and target as we manually
+             * construct: pop teams and target as we manually
              * add stack for those.
              */
             par_pop_scope();
@@ -1848,12 +1851,15 @@ semant1(int rednum, SST *top)
    */
   case END1:
     if (!sem.interface && sem.pgphase < PHASE_EXEC) {
-      if (gbl.currsub && !sem.which_pass)
+      if (gbl.currsub && !sem.which_pass) {
         do_iface(0);
+      }
       if (!IN_MODULE)
         do_iface(1);
       else
         do_iface_module();
+    } else if (sem.which_pass && !IN_MODULE && gbl.internal <= 1) {
+        do_iface(1);
     }
     break;
 
@@ -2430,7 +2436,7 @@ semant1(int rednum, SST *top)
 #ifdef EXTRP
       EXTRP(sptr, sem.extrinsic); /* inherit extrinsic from host */
 #endif
-      SCP(sptr, SC_STATIC);
+      SCP(sptr, SC_STATIC); 
     }
     seen_extrinsic = FALSE;
     (void)init_extrinsic();
@@ -2629,6 +2635,7 @@ semant1(int rednum, SST *top)
     EXTRP(sptr, EXTRG(gbl.currsub));
 #endif
     is_entry = TRUE;
+    PUREP(sptr, PUREG(gbl.currsub));
     break;
 
   /* ------------------------------------------------------------------ */
@@ -2968,6 +2975,9 @@ semant1(int rednum, SST *top)
 #endif
         TYPDP(sptr, 1);
       }
+      if (SCG(sptr) == SC_DUMMY) {
+        IS_PROC_DUMMYP(sptr, 1);
+      } 
     }
     SST_ASTP(LHS, 0);
     break;
@@ -5422,7 +5432,7 @@ semant1(int rednum, SST *top)
             if (SCG(sptr) == SC_DUMMY) {
               mk_assumed_shape(sptr);
               ASSUMSHPP(sptr, 1);
-              if (!XBIT(54, 2))
+              if (!XBIT(54, 2) && !(XBIT(58, 0x400000) && TARGETG(sptr)))
                 SDSCS1P(sptr, 1);
             } else {
               if (AD_ASSUMSHP(ad)) {
@@ -5465,7 +5475,7 @@ semant1(int rednum, SST *top)
           else if (AD_DEFER(ad)) {
             mk_assumed_shape(sptr);
             ASSUMSHPP(sptr, 1);
-            if (!XBIT(54, 2))
+            if (!XBIT(54, 2) && !(XBIT(58, 0x400000) && TARGETG(sptr)))
               SDSCS1P(sptr, 1);
             AD_ASSUMSHP(ad) = 1;
           }
@@ -5499,7 +5509,7 @@ semant1(int rednum, SST *top)
           else if (AD_DEFER(ad)) {
             mk_assumed_shape(sptr);
             ASSUMSHPP(sptr, 1);
-            if (!XBIT(54, 2))
+            if (!XBIT(54, 2) && !(XBIT(58, 0x400000) && TARGETG(sptr)))
               SDSCS1P(sptr, 1);
             AD_ASSUMSHP(ad) = 1;
           }
@@ -5604,6 +5614,25 @@ semant1(int rednum, SST *top)
         ast = mk_bnd_int(A_ALIASG(ast));
         sem.bounds[sem.arrdim.ndim].uptype = S_CONST;
         sem.bounds[sem.arrdim.ndim].upb = get_isz_cval(A_SPTRG(ast));
+      } else {
+        if (*astb.atypes[A_TYPEG(ast)] == 'i' &&   
+          DT_ISINT(A_DTYPEG(ast)) && ast_isparam(ast)) {
+          INT conval;
+          ACL *acl = construct_acl_from_ast(ast, A_DTYPEG(ast), 0);
+          if (acl) {
+            acl = eval_init_expr(acl);
+            conval = cngcon(acl->conval, acl->dtype, A_DTYPEG(ast));
+            ast = mk_cval1(conval, (int)A_DTYPEG(ast));
+            SST_IDP(RHS(1), S_CONST);
+            SST_LSYMP(RHS(1), 0);
+            SST_ASTP(RHS(1), ast);
+            SST_ACLP(RHS(1), 0);
+            if (DT_ISWORD(A_DTYPEG(ast)))
+              SST_SYMP(RHS(1), CONVAL2G(A_SPTRG(ast)));
+            else
+              SST_SYMP(RHS(1), A_SPTRG(ast));
+          }
+        }
       }
       sem.bounds[sem.arrdim.ndim].upast = ast;
     }
@@ -8104,7 +8133,7 @@ semant1(int rednum, SST *top)
                * the check needs to be performed in semfin.
                */
               ASSUMSHPP(sptr, 1);
-              if (!XBIT(54, 2))
+              if (!XBIT(54, 2) && !(XBIT(58, 0x400000) && TARGETG(sptr)))
                 SDSCS1P(sptr, 1);
             }
             mk_defer_shape(sptr);
@@ -8181,6 +8210,9 @@ semant1(int rednum, SST *top)
           EXTRP(sptr, sem.extrinsic);
 #endif
           TYPDP(sptr, 1);
+          if (SCG(sptr) == SC_DUMMY) {
+            IS_PROC_DUMMYP(sptr, 1);
+          }
         }
         stype = 0;
         no_init = TRUE;
@@ -8322,6 +8354,8 @@ semant1(int rednum, SST *top)
         break;
       case ET_TARGET:
         TARGETP(sptr, 1);
+        if( XBIT(58, 0x400000) && SCG(sptr) == SC_DUMMY && ASSUMSHPG(sptr) )
+             SDSCS1P(sptr,0);
         break;
       case ET_AUTOMATIC:
         /* <ident> must be a variable or an array; it cannot be a dummy
@@ -8475,8 +8509,19 @@ semant1(int rednum, SST *top)
       if (stype == ST_ARRAY && !F90POINTERG(sptr)) {
         if (POINTERG(sptr) || MDALLOCG(sptr) ||
             (ALLOCATTRG(sptr) && STYPEG(sptr) == ST_MEMBER)) {
-          get_static_descriptor(sptr);
+          int dty = DTYPEG(sptr);
+          get_static_descriptor(sptr); 
           get_all_descriptors(sptr);
+          if (DTY(dty) == TY_ARRAY) {
+            dty = DTY(dty + 1);
+          }
+          if (DTY(dty) == TY_DERIVED && SCG(sptr) != SC_DUMMY) {  
+            /* initialize the type field in the descriptor */
+            int astnew, type;
+            type = get_static_type_descriptor(DTY(dty + 3));
+            astnew = mk_set_type_call(mk_id(SDSCG(sptr)), mk_id(type), FALSE);
+            add_stmt(astnew);
+          }
         }
       }
     }
@@ -8875,7 +8920,6 @@ semant1(int rednum, SST *top)
               error(155, 3, gbl.lineno, "Derived type component must "
                                         "have the POINTER attribute -",
                     SYMNAME(sptr));
-              entity_attr.exist |= ET_B(ET_POINTER);
             }
           } else if ((entity_attr.exist & ET_B(ET_POINTER)) == 0 &&
                      !DCLDG(DTY(sem.gdtype + 3)))
@@ -9059,7 +9103,7 @@ semant1(int rednum, SST *top)
             if (SCG(sptr) == SC_DUMMY) {
               mk_assumed_shape(sptr);
               ASSUMSHPP(sptr, 1);
-              if (!XBIT(54, 2))
+              if (!XBIT(54, 2) && !(XBIT(58, 0x400000) && TARGETG(sptr)))
                 SDSCS1P(sptr, 1);
             } else {
               if (AD_ASSUMSHP(ad)) {
@@ -9068,7 +9112,7 @@ semant1(int rednum, SST *top)
                  * the check needs to be performed in semfin.
                  */
                 ASSUMSHPP(sptr, 1);
-                if (!XBIT(54, 2))
+                if (!XBIT(54, 2) && !(XBIT(58, 0x400000) && TARGETG(sptr)))
                   SDSCS1P(sptr, 1);
               }
               ALLOCP(sptr, 1);
@@ -9102,7 +9146,7 @@ semant1(int rednum, SST *top)
           else if (AD_DEFER(ad)) {
             mk_assumed_shape(sptr);
             ASSUMSHPP(sptr, 1);
-            if (!XBIT(54, 2))
+            if (!XBIT(54, 2) && !(XBIT(58, 0x400000) && TARGETG(sptr)))
               SDSCS1P(sptr, 1);
             AD_ASSUMSHP(ad) = 1;
           }
@@ -10682,9 +10726,13 @@ procedure_stmt:
     {
       /* Hide, so we can modify attribute list without exposing it */
       int attr = entity_attr.exist;
+      if (!POINTERG(sptr) && !(attr & ET_B(ET_POINTER)) &&
+          proc_interf_sptr > NOSYM && SCG(sptr) == SC_DUMMY) {
+        IS_PROC_DUMMYP(sptr, 1);
+      }
       if (POINTERG(sptr)) {
         attr |= ET_B(ET_POINTER);
-      }
+      } 
       sptr = decl_procedure_sym(sptr, proc_interf_sptr, attr);
       sptr =
           setup_procedure_sym(sptr, proc_interf_sptr, attr, entity_attr.access);
@@ -10741,7 +10789,10 @@ procedure_stmt:
         ivl = dinit_varref(RHS(1));
 
         dinit(ivl, SST_ACLG(RHS(3)));
-      }
+      } 
+    } else if (POINTERG(sptr)) {
+        get_static_descriptor(sptr);
+        get_all_descriptors(sptr);
     }
 
   proc_decl_end:
@@ -11522,6 +11573,11 @@ procedure_stmt:
    */
   case ACCEL_ROUTINE_LIST10:
   break;
+  /*
+   *	<accel routine list> ::= <accel routine list> <opt comma> EXCLUDE
+   */
+  case ACCEL_ROUTINE_LIST11:
+  break;
 
   /* ------------------------------------------------------------------ */
   /*
@@ -11819,6 +11875,7 @@ pop_subprogram(void)
     /* if this is a interface block definition of a subprogram
      * for a dummy argument, force it to appear in an external statement */
     TYPDP(gbl.currsub, 1);
+    IS_PROC_DUMMYP(gbl.currsub, 1);
   }
   /* if this is an interface block for the program we are compiling,
    * ignore this symbol henceforth */
@@ -13223,7 +13280,7 @@ void
 fixup_reqgs_ident(int sptr)
 {
   if (GSCOPEG(sptr)) {
-    if (SDSCG(sptr)) {
+    if (SDSCG(sptr)) { 
       GSCOPEP(SDSCG(sptr), 1);
     }
     if (PTRVG(sptr)) {
@@ -13273,8 +13330,11 @@ defer_iface(int iface, int dtype, int proc, int mem)
       DTYPEP(pass, stsk->dtype);
     }
 
-  } else
+  } else {
     iface_base[iface_avail - 1].mem = 0;
+  }
+  
+  iface_base[iface_avail - 1].proc_var = mem;
   iface_base[iface_avail - 1].lineno = gbl.lineno;
 }
 
@@ -13314,6 +13374,7 @@ fix_iface(int sptr)
   int len, tag, i, iface, proc, mem, dtype;
   int *dscptr;
   char *name;
+
   for (i = 0; i < iface_avail; i++) {
     iface = iface_base[i].iface;
     proc = iface_base[i].proc;
@@ -13396,8 +13457,9 @@ do_iface(int iface_state)
   for (i = 0; i < iface_avail; i++) {
     _do_iface(iface_state, i);
   }
-  if (iface_state)
+  if (iface_state) {
     iface_avail = 0;
+  } 
 }
 
 static void
@@ -13484,6 +13546,25 @@ do_iface_module(void)
   }
 }
 
+/**
+ * Called by _do_iface() as part of error clean-up. We need to clear the
+ * next attempt to use an erroneous interface specified in the iface argument
+ * starting at the "i + 1" element in iface_base.
+ */
+static void
+clear_iface(int i, SPTR iface)
+{
+    int j;
+
+    for (j = i + 1; j < iface_avail; j++) {
+      if (iface_base[j].iface &&
+          sem_strcmp(SYMNAME(iface), SYMNAME(iface_base[j].iface)) == 0) {
+        /* inhibit the next attempt to use the same interface */
+        iface_base[j].iface = 0;
+      }
+    }
+}
+
 static void
 _do_iface(int iface_state, int i)
 {
@@ -13501,10 +13582,24 @@ _do_iface(int iface_state, int i)
   int lineno = iface_base[i].lineno;
   LOGICAL class = iface_base[i].pass_class;
   const char *dt_name = iface_base[i].tag_name;
+  SPTR proc_var = iface_base[i].proc_var;
 
   if (!iface) {
     return;
   }
+ 
+  if (dtype > 0) { 
+    if (DTY(dtype) == TY_ARRAY) {
+      dtype = DTY(dtype + 1);
+    }
+    if (DTY(dtype) == TY_PTR) {
+      dtype = DTY(dtype+1);
+    }
+    if (DTY(dtype) != TY_PROC) {
+      return;
+    }
+  }
+
   if (ptr_scope && STYPEG(ptr_scope) != ST_MODULE &&
       ptr_scope != stb.curr_scope &&
       (gbl.internal <= 1 || (gbl.internal > 1 && gbl.outersub != ptr_scope))) {
@@ -13527,6 +13622,7 @@ _do_iface(int iface_state, int i)
       for (hptr = stb.hashtb[hash]; hptr; hptr = HASHLKG(hptr)) {
         if (STYPEG(hptr) == ST_PROC && strcmp(symname, SYMNAME(hptr)) == 0) {
           int scope = test_scope(hptr);
+		
           if (scope && scope <= test_scope(iface)) {
             iface = hptr;
             break;
@@ -13553,8 +13649,12 @@ _do_iface(int iface_state, int i)
   }
   if (strcmp(SYMNAME(iface), name) != 0)
     iface = getsymbol(name);
-  sptr = refsym(iface, OC_OTHER);
-  if (STYPEG(DTY(dtype + 2)) == ST_MEMBER) {
+  if (sem.interface <= 1) {
+    sptr = refsym(iface, OC_OTHER); 
+  } else {
+    sptr = refsym_inscope(iface, OC_OTHER);
+  }
+  if (DTY(dtype) == TY_PROC && STYPEG(DTY(dtype + 2)) == ST_MEMBER) {
     iface = sptr;
     DTY(dtype + 2) = iface;
   }
@@ -13591,22 +13691,22 @@ _do_iface(int iface_state, int i)
   default:
   iface_err:
     if (!STYPEG(iface) &&
-        (!sem.which_pass || (IN_MODULE && !sem.seen_end_module))) {
+        (!sem.which_pass || iface_state == 0 ||
+        (IN_MODULE && !sem.seen_end_module))) {
 /* Do not generate error on semantic pass 0. May not have seen the
  * entire module yet. Return only if we have seen an IMPORT stmt.
  */
       return;
     }
     error(155, 3, lineno, "Illegal procedure interface -", SYMNAME(orig));
-    for (j = i + 1; j < iface_avail; j++) {
-      if (iface_base[j].iface &&
-          sem_strcmp(SYMNAME(orig), SYMNAME(iface_base[j].iface)) == 0) {
-        /* inhibit the next attempt to use the same interface */
-        iface_base[j].iface = 0;
-      }
-    }
+    clear_iface(i, orig);
     return;
   }
+  if (ELEMENTALG(orig) && !IS_INTRINSIC(STYPEG(orig)) &&
+      POINTERG(proc_var)) {
+    error(1010, ERR_Severe, lineno, SYMNAME(proc_var), CNULL);
+    clear_iface(i, orig);
+  } 
   passed_object = 0;
   pass_notfound = mem && PASSG(mem);
   fval = FVALG(iface);
@@ -13646,6 +13746,7 @@ _do_iface(int iface_state, int i)
     FVALP(proc, fval);
     PUREP(proc, PUREG(iface));
     ELEMENTALP(proc, ELEMENTALG(iface));
+    CFUNCP(proc, CFUNCG(iface)); 
   } else {
     /*  dtype locates the TY_PROC data type record  */
     if (mem && paramct == 0 && !NOPASSG(mem)) {
@@ -15733,7 +15834,8 @@ setup_procedure_sym(int sptr, int proc_interf_sptr, int attr, char access)
       DTY(dtype + 1) = DT_NONE;
 
     dtype = get_type(2, TY_PTR, dtype);
-    POINTERP(sptr, TRUE);
+    if (STYPEG(sptr) != ST_VAR || !IS_PROC_DUMMYG(sptr))
+      POINTERP(sptr, TRUE);
 
     if (access == 'v' || (sem.accl.type == 'v' && access != 'u')) {
       /* Set PRIVATE here for procedure pointers. */

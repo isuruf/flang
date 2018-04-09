@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 1994-2018, NVIDIA CORPORATION.  All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,9 +36,9 @@ public:
      to minimize accidental use outside macro NEED.  It would
      be better that "operator void*" have the explicit keyword, but
      Microsoft 10.0 Open Tools does not support that C++11 feature. */
-  operator void *() const
+  operator char*() const
   {
-    return rep;
+    return reinterpret_cast<char*>(rep);
   }
   void operator=(T *ptr)
   {
@@ -50,7 +50,7 @@ public:
   }
   void *operator+(int offset) const
   {
-    return (void *)(rep + offset);
+    return reinterpret_cast<void *>(rep + offset);
   }
 };
 
@@ -89,10 +89,7 @@ void realloc_sym_storage();
 
 /* symbol creation macros */
 #define NEWSYM(sptr)         \
-  sptr = (SPTR)stb.stg_avail++; \
-  if (sptr >= stb.stg_size)    \
-    realloc_sym_storage();   \
-  BZERO(&stb.stg_base[sptr], char, sizeof(SYM))
+  sptr = (SPTR)STG_NEXT(stb);
 
 #define LINKSYM(sptr, hashval)        \
   HASHLKP(sptr, stb.hashtb[hashval]); \
@@ -178,9 +175,7 @@ typedef struct {
   int curr_scope;
   SPTR hashtb[HASHSIZE + 1];
   SPTR firstusym, firstosym;
-  INDEX_BY(SYM, SPTR) stg_base;
-  int stg_size;
-  int stg_avail;
+  STG_MEMBERS(SYM);
   char *n_base;
   int n_size;
   int namavl;

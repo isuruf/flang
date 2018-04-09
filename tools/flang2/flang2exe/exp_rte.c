@@ -65,6 +65,11 @@ static int has_desc_arg(int, int);
 static int check_desc(int, int);
 static void check_desc_args(int);
 static int exp_type_bound_proc_call(int, int, int, int);
+static bool is_asn_closure_call(int sptr);
+static int get_chain_pointer_closure(int sdsc);
+static int add_last_arg(int arglnk, int displnk);
+static int add_arglnk_closure(int sdsc);
+static int add_gargl_closure(int sdsc);
 
 #define CLASS_NONE 0
 #define CLASS_INT4 4
@@ -74,6 +79,12 @@ static int exp_type_bound_proc_call(int, int, int, int);
 #define MAX_PASS_STRUCT_SIZE 16
 
 #define mk_prototype mk_prototype_llvm
+
+#define IS_INTERNAL_PROC_CALL(opc) \
+(opc == IM_PCALLA || opc == IM_PCHFUNCA || opc == IM_PNCHFUNCA || \
+ opc == IM_PKFUNCA || opc == IM_PLFUNCA || opc == IM_PIFUNCA || \
+ opc == IM_PRFUNCA || opc == IM_PDFUNCA || opc == IM_PCFUNCA || \
+ opc == IM_PCDFUNCA || opc == IM_PPFUNCA)
 
 static int exp_call_sym; /**< sptr subprogram being called */
 static int fptr_iface;   /**< sptr of function pointer's interface */
@@ -224,6 +235,7 @@ needlen(int sym, int func)
   return TRUE;
 }
 
+
 static void
 create_llvm_display_temp(void)
 {
@@ -259,7 +271,6 @@ create_llvm_display_temp(void)
     dtype = DTYPEG(display_temp);
     if (DTY(dtype) != TY_STRUCT)
       dtype = make_uplevel_arg_struct();
-
     asym = mk_argasym(display_temp);
     ADDRESSP(asym, ADDRESSG(display_temp)); /* propagate ADDRESS */
     MEMARGP(asym, 1);
@@ -1487,7 +1498,6 @@ pp_params(int func)
     if (COPYPRMSG(argsym))
       cp_memarg(argsym, pf->mem_off, DT_ADDR);
     else if (DTY(argdtype) == TY_STRUCT) {
-      ADDRESSP(MIDNUMG(argsym), pf->mem_off);
       REFP(MIDNUMG(argsym), 1);
       cp_memarg(argsym, pf->mem_off, DT_ADDR);
     } else {
@@ -1710,7 +1720,6 @@ scan_args:
     if (COPYPRMSG(argsym)) {
       cp_memarg(argsym, pf->mem_off, DT_ADDR);
     } else if (DTY(argdtype) == TY_STRUCT) {
-      ADDRESSP(MIDNUMG(argsym), pf->mem_off);
       REFP(MIDNUMG(argsym), 1);
       cp_memarg(argsym, pf->mem_off, DT_ADDR);
     } else {
@@ -1790,7 +1799,6 @@ get_frame_off(INT off)
     REDUCP(memarg_var, 1); /* mark sym --> no further indirection */
     HOMEDP(memarg_var, 0);
     ADDRTKNP(memarg_var, 1);
-    ADDRESSP(memarg_var, MEMARG_OFFSET);
   }
   ili = ad_acon(memarg_var, off - MEMARG_OFFSET);
   return ili;
@@ -1960,23 +1968,14 @@ cp_memarg(int sym, INT off, int dtype)
   MEMARGP(sym, 0);
   switch (dtype) {
   case DT_INT:
-    ili = get_frame_off(off);
-    ili = ad3ili(IL_LD, ili, NME_UNK, MSZ_WORD);
-    ili = ad4ili(IL_ST, ili, ad_acon(sym, (INT)0),
-                 addnme(NT_VAR, sym, 0, (INT)0), MSZ_WORD);
+    /* TODO: store by value arg into memory */
     break;
   case DT_INT8:
-    ili = get_frame_off(off);
-    ili = ad3ili(IL_LDKR, ili, NME_UNK, MSZ_I8);
-    ili = ad4ili(IL_STKR, ili, ad_acon(sym, (INT)0),
-                 addnme(NT_VAR, sym, 0, (INT)0), MSZ_I8);
+    /* TODO: store by value arg into memory */
     break;
   case DT_ADDR:
-    ili = get_frame_off(off);
-    ili = ad2ili(IL_LDA, ili, NME_UNK);
+    /* TODO: store by value arg into memory */
     asym = mk_argasym(sym);
-    ili = ad3ili(IL_STA, ili, ad_acon(asym, (INT)0),
-                 addnme(NT_VAR, asym, 0, (INT)0));
     HOMEDP(asym, 1);
     MEMARGP(asym, 0);
     break;
@@ -1987,7 +1986,6 @@ cp_memarg(int sym, INT off, int dtype)
   }
   if (gbl.internal == 1 && asym != 0)
     arg_is_refd(asym);
-  chk_block(ili);
   if (EXPDBG(8, 256))
     fprintf(gbl.dbgfil, "%s must be copied from MEM+%d\n", SYMNAME(sym), off);
 }
@@ -3020,6 +3018,90 @@ cmplx_to_mem(int real, int imag, int dtype, int *addr, int *nme)
   }
 }
 
+/**
+ * \brief get the chain pointer argument from a descriptor.
+ * 
+ * \param arglnk is a chain of argument ILI for a call-site.
+ *
+ * \param sdsc is the descriptor that has the chain pointer.
+ *
+ * \return  an IL_LDA ili chain that contains the ILI that loads the chain 
+ *          pointer from the descriptor. 
+ */
+static int
+get_chain_pointer_closure(int sdsc)
+{
+  int nme, cp, cp_offset;
+
+  if (XBIT(68, 0x1)) {
+    cp_offset = 72;
+  } else {
+    cp_offset = 40;
+  }
+  nme = addnme(NT_VAR, sdsc, 0, (INT)0);
+  if (SCG(sdsc) != SC_DUMMY) {
+    cp = ad_acon(sdsc, (INT)cp_offset);
+    cp = ad2ili(IL_LDA, cp, nme);
+  } else {
+    int asym, addr, ili;
+    asym = mk_argasym(sdsc);
+    addr = mk_address(sdsc);
+    ili = ad2ili(IL_LDA, addr, addnme(NT_VAR, asym, 0, (INT)0));
+    cp = ad3ili(IL_AADD, ili, ad_aconi(cp_offset), 0);
+    if (!INTERNREFG(sdsc) && !PARREFG(sdsc))
+      cp = ad2ili(IL_LDA, cp, nme);
+  }
+
+  return cp;
+}
+
+static int 
+add_last_arg(int arglnk, int displnk)
+{
+  int a, i;
+
+  if (ILI_OPC(arglnk) == IL_NULL)
+    return displnk;
+
+  for(i=arglnk; i > 0 && ILI_OPC(ILI_OPND(i, 2)) != IL_NULL;
+      i = ILI_OPND(i, 2)) ;
+
+  ILI_OPND(i, 2) = displnk;
+
+  return arglnk;
+
+}
+
+static int 
+add_arglnk_closure(int sdsc)
+{
+  int i;
+
+  i = get_chain_pointer_closure(sdsc);
+  i = ad3ili(IL_ARGAR, i, ad1ili(IL_NULL, 0), ad1ili(IL_NULL, 0));
+  return i;
+}
+
+static int 
+add_gargl_closure(int sdsc)
+{
+  int i;
+
+  i = get_chain_pointer_closure(sdsc);
+  i = ad4ili(IL_GARG, i, ad1ili(IL_NULL, 0), DT_ADDR, NME_VOL);
+  return i;
+}
+
+static bool 
+is_asn_closure_call(int sptr)
+{
+  if (sptr > NOSYM && STYPEG(sptr) == ST_PROC && CCSYMG(sptr) &&
+      strcmp(SYMNAME(sptr), mkRteRtnNm(RTE_asn_closure)) == 0) {
+    return true;
+   }
+   return false;
+}
+
 void
 exp_call(ILM_OP opc, ILM *ilmp, int curilm)
 {
@@ -3046,13 +3128,14 @@ exp_call(ILM_OP opc, ILM *ilmp, int curilm)
   int retval;
   int func_addr;
   int vtoff;
-  int descno;
+  int descno=0;
   int gargl, gi, gjsr, ngargs, garg_disp;
   int gfch_addr, gfch_len; /* character function return */
   int jsra_mscall_flag;
   int funcptr_flags;
   int retdesc;
   int struct_tmp;
+  int chain_pointer_arg = 0;
 
   nargs = ILM_OPND(ilmp, 1); /* # args */
   func_addr = 0;
@@ -3081,19 +3164,35 @@ exp_call(ILM_OP opc, ILM *ilmp, int curilm)
     exp_call_sym = ILM_OPND(ilmp, 2); /* external reference  */
     break;
   case IM_CALLA:
+  case IM_PCALLA:
   case IM_CHFUNCA:
+  case IM_PCHFUNCA:
   case IM_NCHFUNCA:
+  case IM_PNCHFUNCA:
   case IM_KFUNCA:
+  case IM_PKFUNCA:
   case IM_LFUNCA:
+  case IM_PLFUNCA:
   case IM_IFUNCA:
+  case IM_PIFUNCA:
   case IM_RFUNCA:
+  case IM_PRFUNCA:
   case IM_DFUNCA:
+  case IM_PDFUNCA:
   case IM_CFUNCA:
+  case IM_PCFUNCA:
   case IM_CDFUNCA:
+  case IM_PCDFUNCA:
   case IM_PFUNCA:
+  case IM_PPFUNCA:
     funcptr_flags = ILM_OPND(ilmp, 2);
     exp_call_sym = 0; /* via procedure ptr */
-    ilm1 = ILM_OPND(ilmp, 3);
+    if (!IS_INTERNAL_PROC_CALL(opc)) {
+      ilm1 = ILM_OPND(ilmp, 3);
+    } else {
+      ilm1 = ILM_OPND(ilmp, 4);
+      descno = ILM_OPND(ilmp, 3);
+    }
     func_addr = ILI_OF(ilm1);
     ilmlnk = (ILM *)(ilmb.ilm_base + ilm1);
     switch (ILM_OPC(ilmlnk)) {
@@ -3193,6 +3292,8 @@ exp_call(ILM_OP opc, ILM *ilmp, int curilm)
   case IM_NCHFUNC:
   case IM_CHFUNCA:
   case IM_NCHFUNCA:
+  case IM_PCHFUNCA:
+  case IM_PNCHFUNCA:
     /*
      * for a function returning character, the first 2 arguments
      * are the address of a char temporary created by the semantic
@@ -3201,6 +3302,8 @@ exp_call(ILM_OP opc, ILM *ilmp, int curilm)
 
     if ((opc == IM_CHFUNC) || (opc == IM_NCHFUNC)) {
       ilm1 = ILM_OPND(ilmp, 3);
+    } else if (opc == IM_PCHFUNCA || opc == IM_PNCHFUNCA) {
+      ilm1 = ILM_OPND(ilmp, 5);
     } else {
       ilm1 = ILM_OPND(ilmp, 4);
     }
@@ -3234,6 +3337,10 @@ exp_call(ILM_OP opc, ILM *ilmp, int curilm)
   case IM_CFUNC:
   case IM_CDFUNC:
     i = 3;
+    goto share_cfunc;
+  case IM_PCFUNCA:
+  case IM_PCDFUNCA:
+    i = 5;
     goto share_cfunc;
   case IM_CFUNCA:
   case IM_CDFUNCA:
@@ -3349,6 +3456,16 @@ exp_call(ILM_OP opc, ILM *ilmp, int curilm)
   case IM_CALLA:
     i = 4; /* ilm pointer to first arg */
     break;
+  case IM_PCALLA:
+  case IM_PIFUNCA:
+  case IM_PRFUNCA:
+  case IM_PDFUNCA:
+  case IM_PLFUNCA:
+  case IM_PPFUNCA:
+  case IM_PKFUNCA:
+    descno = ILM_OPND(ilmp, 3);
+    i = 5;
+    break; /* ilm pointer to first arg */
   default:
     i = 3; /* ilm pointer to first arg */
     break;
@@ -3832,7 +3949,8 @@ exp_call(ILM_OP opc, ILM *ilmp, int curilm)
   arglnk = gen_arg_ili();
   garg_disp = 0;
 
-  if (gbl.internal && CONTAINEDG(exp_call_sym)) {
+  if (gbl.internal && (CONTAINEDG(exp_call_sym) || 
+      is_asn_closure_call(exp_call_sym))) {
     int disp;
     int nme;
     /* calling contained procedure from
@@ -3858,7 +3976,11 @@ exp_call(ILM_OP opc, ILM *ilmp, int curilm)
         disp = ad2ili(IL_LDA, disp, addnme(NT_VAR, disp, 0, (INT)0));
       }
     }
-    arglnk = ad3ili(IL_ARGAR, disp, arglnk, ad1ili(IL_NULL, 0));
+    if (!XBIT(121, 0x800)) {
+      chain_pointer_arg = ad3ili(IL_ARGAR, disp, ad1ili(IL_NULL, 0), 
+                                 ad1ili(IL_NULL, 0));
+    } 
+    
     if (XBIT(121, 0x800))
       garg_disp = disp;
   }
@@ -3892,17 +4014,25 @@ exp_call(ILM_OP opc, ILM *ilmp, int curilm)
       ilix = ad4ili(IL_GARG, gfch_addr, gargl, DT_ADDR, 0);
       gargl = ilix;
     }
-    if (garg_disp) { /* Internal procedure: uplevel struct (first arg) */
-      ilix = ad4ili(IL_GARG, garg_disp, gargl, DT_ADDR, 0);
-      gargl = ilix;
-    }
     if (garg_ili[0].ilix) {
       ilix = ad4ili(IL_GARGRET, garg_ili[0].ilix, gargl, garg_ili[0].dtype,
                     garg_ili[0].nme);
       gargl = ilix;
     }
+    if (garg_disp) {
+      ilix = ad4ili(IL_GARG, garg_disp, ad1ili(IL_NULL, 0), DT_ADDR, 0);
+      if (ILI_OPC(gargl) == IL_NULL)
+        gargl = ilix;
+      else
+        add_last_arg(gargl, ilix);
+    }
   }
-
+  if (chain_pointer_arg != 0) {
+    if (ILI_OPC(arglnk) == IL_NULL)
+      arglnk = chain_pointer_arg;
+    else
+      add_last_arg(arglnk, chain_pointer_arg);
+  }
   fptr_iface = 0;
   if (exp_call_sym) {
     fptr_iface = exp_call_sym;
@@ -3925,6 +4055,12 @@ exp_call(ILM_OP opc, ILM *ilmp, int curilm)
       jsra_mscall_flag = 0;
     else
       jsra_mscall_flag = 0x1;
+    if (IS_INTERNAL_PROC_CALL(opc)) {
+      arglnk = add_last_arg(arglnk, add_arglnk_closure(descno));
+      if (XBIT(121, 0x800)) {
+        gargl = add_last_arg(gargl, add_gargl_closure(descno)); 
+      }
+    }
     ililnk = ad4ili(IL_JSRA, func_addr, arglnk, jsra_mscall_flag, fptr_iface);
     if (XBIT(121, 0x800)) {
       gjsr = ad4ili(IL_GJSRA, func_addr, gargl, jsra_mscall_flag, fptr_iface);
@@ -3985,15 +4121,19 @@ exp_call(ILM_OP opc, ILM *ilmp, int curilm)
   case IM_CHFUNC:
   case IM_NCHFUNC:
   case IM_CALLA:
+  case IM_PCALLA:
   case IM_VCALLA:
   case IM_CHVFUNCA:
   case IM_NCHVFUNCA:
   case IM_CHFUNCA:
   case IM_NCHFUNCA:
+  case IM_PCHFUNCA:
+  case IM_PNCHFUNCA:
     chk_block(ililnk);
     break;
   case IM_KFUNC:
   case IM_KFUNCA:
+  case IM_PKFUNCA:
   case IM_KVFUNCA:
     ililnk = ad2ili(IL_DFRKR, ililnk, KR_RETVAL);
     ILI_OF(curilm) = ililnk;
@@ -4002,22 +4142,27 @@ exp_call(ILM_OP opc, ILM *ilmp, int curilm)
   case IM_IFUNC:
   case IM_LFUNCA:
   case IM_IFUNCA:
+  case IM_PLFUNCA:
+  case IM_PIFUNCA:
   case IM_LVFUNCA:
   case IM_IVFUNCA:
     ILI_OF(curilm) = ad2ili(IL_DFRIR, ililnk, IR_RETVAL);
     break;
   case IM_RFUNC:
   case IM_RFUNCA:
+  case IM_PRFUNCA:
   case IM_RVFUNCA:
     ILI_OF(curilm) = ad2ili(IL_DFRSP, ililnk, FR_RETVAL);
     break;
   case IM_DFUNC:
   case IM_DFUNCA:
+  case IM_PDFUNCA:
   case IM_DVFUNCA:
     ILI_OF(curilm) = ad2ili(IL_DFRDP, ililnk, FR_RETVAL);
     break;
   case IM_CFUNC:
   case IM_CFUNCA:
+  case IM_PCFUNCA:
   case IM_CVFUNCA:
     chk_block(ililnk);
     if (XBIT(70, 0x40000000)) {
@@ -4034,6 +4179,7 @@ exp_call(ILM_OP opc, ILM *ilmp, int curilm)
     break;
   case IM_CDFUNC:
   case IM_CDFUNCA:
+  case IM_PCDFUNCA:
   case IM_CDVFUNCA:
     chk_block(ililnk);
     if (XBIT(70, 0x40000000)) {
@@ -4049,6 +4195,7 @@ exp_call(ILM_OP opc, ILM *ilmp, int curilm)
     break;
   case IM_PFUNC:
   case IM_PFUNCA:
+  case IM_PPFUNCA:
   case IM_PVFUNCA:
     ILI_OF(curilm) = ad2ili(IL_DFRAR, ililnk, AR_RETVAL);
     ILM_NME(curilm) = NME_UNK;
@@ -4087,7 +4234,6 @@ exp_call(ILM_OP opc, ILM *ilmp, int curilm)
   default:
     interr("exp_call: bad function opc", opc, 3);
   }
-
   end_arg_ili();
 }
 
@@ -4496,6 +4642,12 @@ _exp_smove(int dest_nme, int src_nme, int dest_addr, int src_addr, DTYPE dtype)
   INT offset; /* number of bytes from begin addr 	*/
 
   n = size_of(dtype);
+  if (0 && !XBIT(2, 0x1000000)) {
+    chk_block(ad4ili(IL_SMOVEI, ad2ili(IL_SMOVES, src_addr, src_nme), dest_addr,
+                     n, dest_nme));
+    smove_flag = 1; /* structure move in this function */
+    return;
+  }
   offset = 0;
 
 /*  for large structs, copy as much as possible using an smovl/smoveq instr: */

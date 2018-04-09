@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1994-2017, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 1994-2018, NVIDIA CORPORATION.  All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1224,7 +1224,7 @@ is_kopy_in_needed(int arg)
     if (SCG(arg) != SC_DUMMY && !RESULTG(arg))
       return FALSE;
     /* pointer need kopy-in, regardless of type */
-    if (POINTERG(arg))
+    if (POINTERG(arg) || IS_PROC_DUMMYG(arg))
       return TRUE;
     /* other nonarrays need no kopy in */
     if (DTY(DTYPEG(arg)) != TY_ARRAY)
@@ -1346,7 +1346,7 @@ _wrap_symbol(int sptr, int memberast, int basesptr)
     for (mem = DTY(dtype + 1); mem > NOSYM; mem = SYMLKG(mem)) {
       if (!POINTERG(mem) &&
           !USELENG(mem) /* TBD - use of length type parameters */
-          ) {
+      ) {
         _wrap_symbol(mem, memberast, basesptr);
       }
     }
@@ -1549,8 +1549,8 @@ transform_wrapup(void)
        * in semfin and we can't do it in lower as it is
        * too late for uplevel reference.
        */
-      if (flg.smp && PARREFG(sptr) && SCG(sptr) != SC_DUMMY
-          && (ADJLENG(sptr) || AUTOBJG(sptr))) {
+      if (flg.smp && PARREFG(sptr) && SCG(sptr) != SC_DUMMY &&
+          (ADJLENG(sptr) || AUTOBJG(sptr))) {
         int midnum = MIDNUMG(sptr);
         if (midnum == 0) {
           SCP(sptr, SC_BASED);
@@ -1749,7 +1749,8 @@ undouble_callee_args_f90(void)
 static LOGICAL
 arg_has_descriptor(int oldarg)
 {
-  return oldarg > NOSYM && (ASSUMSHPG(oldarg) || POINTERG(oldarg) ||
+  return oldarg > NOSYM && (ASSUMSHPG(oldarg) || POINTERG(oldarg) || 
+                            IS_PROC_DUMMYG(oldarg) ||
                             ALLOCATTRG(oldarg) || is_kopy_in_needed(oldarg));
 }
 
@@ -1983,8 +1984,8 @@ emit_secd(int sptr, int memberast, LOGICAL free_flag, LOGICAL for_allocate)
       mk_isz_cval(dtype_to_arg(DTY(INS_DTYPE(secd) + 1)), astb.bnd.dtype);
 
   dtype = DTY(INS_DTYPE(secd) + 1);
-  sizeast = size_of_dtype(typed_alloc != DT_NONE ? typed_alloc : dtype,
-			  sptr, memberast);
+  sizeast = size_of_dtype(typed_alloc != DT_NONE ? typed_alloc : dtype, sptr,
+                          memberast);
   ARGT_ARG(argt, 3) = sizeast;
 
   j = 4;
@@ -2202,9 +2203,7 @@ set_type_in_descriptor(int descriptor_ast, int sptr, DTYPE dtype0,
       if (typedsc_sptr > NOSYM)
         type_ast = mk_id(typedsc_sptr);
     }
-    if (type_ast == 0 &&
-        sptr > NOSYM &&
-        (CLASSG(sptr) || FINALIZEDG(sptr))) {
+    if (type_ast == 0 && sptr > NOSYM && (CLASSG(sptr) || FINALIZEDG(sptr))) {
       type_ast = find_descriptor_ast(sptr, parent_ast);
       if (type_ast == 0) {
         int typedsc_sptr = get_static_type_descriptor(sptr);
@@ -2555,7 +2554,8 @@ newargs_for_entry(int this_entry)
     arg = aux.dpdsc_base[dscptr];
     if (arg == 0) {
       formal = 0;
-    } else if (STYPEG(arg) != ST_ARRAY && STYPEG(arg) != ST_VAR) {
+    } else if (STYPEG(arg) != ST_ARRAY && STYPEG(arg) != ST_VAR &&
+               !IS_PROC_DUMMYG(arg)) {
       formal = arg;
     } else {
       newarg = NEWARGG(arg);
@@ -2573,11 +2573,11 @@ newargs_for_entry(int this_entry)
       }
       if (!F90POINTERG(arg) &&
           ((is_array_type(arg) && !is_bad_dtype(DTYPEG(arg))) ||
-           POINTERG(arg) || ALLOCATTRG(arg))) {
+           POINTERG(arg) || ALLOCATTRG(arg) || IS_PROC_DUMMYG(arg))) {
         /* use the address field to hold new name for param/section */
         formal = newarg;
         if (XBIT(57, 0x80000) && (formal == arg || formal == 0) &&
-            (POINTERG(arg) || ALLOCATTRG(arg))) {
+            (POINTERG(arg) || ALLOCATTRG(arg) || IS_PROC_DUMMYG(arg))) {
           if (MIDNUMG(arg)) {
             SCP(MIDNUMG(arg), SC_DUMMY);
             OPTARGP(MIDNUMG(arg), OPTARGG(arg));
@@ -2611,8 +2611,10 @@ newargs_for_entry(int this_entry)
          * since their results (which are converted into new first
          * arguments) don't have the mystery ALLOCDESC flag set on them.
          */
-        set_preserve_descriptor(CLASSG(arg) ||
-                                (/* ALLOCDESCG(arg) && */ RESULTG(arg)));
+        set_preserve_descriptor(CLASSG(arg) || is_procedure_ptr(arg) ||
+                                (sem.which_pass && IS_PROC_DUMMYG(arg)) ||
+                                ( ALLOCDESCG(arg) &&  RESULTG(arg)));
+
         newdsc = sym_get_arg_sec(arg);
         set_preserve_descriptor(0);
         NEWDSCP(arg, newdsc);
@@ -3949,15 +3951,27 @@ set_assumsz_bound(int arg, int entry)
   ENTSTDP(entry, std);
 }
 
+/*
+ * return '1' if astx is a A_ID of a compiler-created temp
+ */
+static int
+cc_tmp_var(int astx)
+{
+  if (A_TYPEG(astx) == A_ID &&
+      (CCSYMG(A_SPTRG(astx)) || HCCSYMG(A_SPTRG(astx))))
+    return 1;
+  return 0;
+} /* cc_tmp_var */
+
 void
 set_assumed_bounds(int arg, int entry, int actual)
 {
   ADSC *ad;
   int dtype;
   int r;
-  int i;
-  int ast1, ast2;
-  int sav;
+  int i, ndim;
+  int ast, ast1, ast2, ast_glb;
+  int sav = 0;
   int tmp_lb, tmp_ub;
   int std;
   int argt, nargs;
@@ -3969,6 +3983,7 @@ set_assumed_bounds(int arg, int entry, int actual)
   ad = AD_DPTR(dtype);
   assert(AD_DEFER(ad), "set_assumed_bounds: arg not deferred", arg, 4);
   std = ENTSTDG(entry);
+  r = AD_NUMDIM(ad);
 
   newarg = NEWARGG(arg);
   newdsc = NEWDSCG(arg);
@@ -3990,8 +4005,60 @@ set_assumed_bounds(int arg, int entry, int actual)
   zbaseast = 0;
   prevmpyer = 0;
 
-  /* arg is assumed shape, need to set its bounds */
-  r = AD_NUMDIM(ad);
+  /* when xbit(58, 0x400000) set, if TARGET && DUMMY, need to reset bounds */
+  /* used code from rte.c:get_all_descriptors() */
+  if (XBIT(58, 0x400000) && TARGETG(arg)) {
+    DESCUSEDP(arg, 1);
+    ndim = rank_of_sym(arg);
+    assert(r==ndim,"set_assumed_bounds: rank mismatch", ndim,ERR_Fatal);
+    assert(ASSUMSHPG(arg), "set_assumed_bounds(): wrong shape", 0, ERR_Fatal);
+    assert(SCG(arg) == SC_DUMMY,"set_assumed_bounds(): expected dummy arg", 
+           SCG(arg), ERR_Fatal);
+    ast_visit(1, 1);
+    for (i = 0; i < ndim; i++) {
+      int oldast, a;
+
+      oldast = AD_LWAST(ad, i);
+      AD_LWAST(ad, i) = get_global_lower(newdsc, i);
+      if (oldast)
+        ast_replace(oldast, AD_LWAST(ad, i));
+      
+
+      oldast = AD_UPAST(ad, i);
+      a = get_extent(newdsc, i);
+      a = mk_binop(OP_SUB, a, mk_isz_cval(1, astb.bnd.dtype), astb.bnd.dtype);
+      a = mk_binop(OP_ADD, AD_LWAST(ad, i), a, astb.bnd.dtype);
+      AD_UPAST(ad, i) = a;
+      if (oldast)
+        ast_replace(oldast, AD_UPAST(ad, i));
+
+      oldast = AD_EXTNTAST(ad, i);
+      AD_EXTNTAST(ad, i) = get_extent(newdsc, i);
+      if (oldast)
+        ast_replace(oldast, AD_EXTNTAST(ad, i));
+
+      {
+        AD_LWBD(ad, i) = AD_LWAST(ad, i);
+        AD_UPBD(ad, i) = AD_UPAST(ad, i);
+      }
+    }
+
+
+    for (i = 0; i < ndim; ++i) {
+      AD_MLPYR(ad, i) = get_local_multiplier(newdsc, i);
+    }
+    AD_NUMELM(ad) = get_desc_gsize(newdsc);
+    AD_ZBASE(ad) = get_xbase(newdsc);
+    ast = AD_ZBASE(ad);
+    if (ast)
+      AD_ZBASE(ad) = ast_rewrite(ast);
+    ast_unvisit();
+    goto check_optional;
+  }
+
+  /* arg is assumed shape, need to set (and maybe fix if !TARGET) its bounds */
+  if( XBIT(58,0x400000) && !TARGETG(arg) )
+        SDSCS1P(arg, 1); /* see comment below regarding these xbits */
   for (i = 0; i < r; ++i) {
     tmp_lb = AD_LWAST(ad, i); /* temp for lower bound */
     /* declare it by changing the  scope */
@@ -3999,14 +4066,21 @@ set_assumed_bounds(int arg, int entry, int actual)
       IGNOREP(A_SPTRG(tmp_lb), 0);
     }
 
-    ad = AD_DPTR(dtype);
-
     if ((ast1 = AD_LWBD(ad, i)) == 0)
       /* lower bound not specified */
       ast1 = mk_isz_cval(1, astb.bnd.dtype);
     if (A_TYPEG(tmp_lb) == A_CNST) {
       sav = tmp_lb;
-    } else if (tmp_lb != ast1) {
+    } else if (XBIT(54,2) || (XBIT(58,0x400000) && TARGETG(arg))) {
+      /* lower bound assignment */
+      /* lb = <global lower bound> */
+      ast_glb = get_global_lower(newdsc, i);
+      sav = ast1;
+      ast2 = mk_stmt(A_ASN, 0);
+      A_DESTP(ast2, tmp_lb);
+      A_SRCP(ast2, ast_glb);
+      std = add_stmt_after(ast2, std);
+    } else if (tmp_lb != ast1 ) {
       /* output lower bound assignment */
       /* lb = <declared lower bound> */
       sav = ast1;
@@ -4016,6 +4090,22 @@ set_assumed_bounds(int arg, int entry, int actual)
       std = add_stmt_after(ast2, std);
     }
 
+    /* did we not set lower bound to 1 in to_assumed_shape() or
+     * mk_assumed_shape() because TARGET was not yet available 
+     * (still in parser) when this xbit was set?
+     */
+    if( XBIT(58,0x400000) && !TARGETG(arg) )
+    {
+        if(AD_LWBD(ad, i) == AD_LWAST(ad, i))
+        {
+            AD_LWBD(ad, i) = astb.bnd.one; /* set in both routines */
+            /* following only set in mk_assumed_shape() */
+            if(AD_LWBD(ad, i) && A_TYPEG(AD_LWBD(ad, i)) != A_CNST && 
+               cc_tmp_var(AD_LWBD(ad, i)))
+                 AD_LWAST(ad, i) = astb.bnd.one; 
+        }
+    }
+
     /* no need for upper bounds for pointer dummys */
     if (POINTERG(arg))
       continue;
@@ -4023,13 +4113,12 @@ set_assumed_bounds(int arg, int entry, int actual)
     /* output upper bound assignment */
     ast2 = extent(arg, check_member(actual, mk_id(newdsc)), i);
     /* ub = lb - 1 + pghpf_extent(a, dim) */
-    ast1 =
-        mk_binop(OP_ADD, mk_binop(OP_SUB, ast1, mk_isz_cval(1, astb.bnd.dtype),
-                                  astb.bnd.dtype),
-                 ast2, astb.bnd.dtype);
+    ast1 = mk_binop(
+        OP_ADD,
+        mk_binop(OP_SUB, ast1, mk_isz_cval(1, astb.bnd.dtype), astb.bnd.dtype),
+        ast2, astb.bnd.dtype);
     ast2 = mk_stmt(A_ASN, 0);
     A_SRCP(ast2, ast1);
-    ad = AD_DPTR(dtype);
     tmp_ub = AD_UPAST(ad, i);
     A_DESTP(ast2, tmp_ub);
     /* declare it by changing the  scope */
@@ -4062,7 +4151,7 @@ set_assumed_bounds(int arg, int entry, int actual)
         int astoff;
         int lb;
         /* account for difference between actual argument lower bound
-        * and assumed-shape argument declared lower bound */
+         * and assumed-shape argument declared lower bound */
         ast = get_global_lower(newdsc, i);
         if (!XBIT(58, 0x40000000)) {
           astoff = get_section_offset(newdsc, i);
@@ -4080,7 +4169,7 @@ set_assumed_bounds(int arg, int entry, int actual)
           }
           if (lbval) {
             ast = mk_binop(OP_SUB, ast, mk_isz_cval(lbval, astb.bnd.dtype),
-                            astb.bnd.dtype);
+                           astb.bnd.dtype);
           }
         } else {
           int lwast;
@@ -4093,7 +4182,7 @@ set_assumed_bounds(int arg, int entry, int actual)
       } else {
         if (AD_ZBASE(ad)) {
           ast = mk_binop(OP_MUL, AD_LWAST(ad, i), AD_MLPYR(ad, i),
-                          astb.bnd.dtype);
+                         astb.bnd.dtype);
         } else {
           ast = 0;
         }
@@ -4154,6 +4243,7 @@ set_assumed_bounds(int arg, int entry, int actual)
     std = add_stmt_after(ast, std);
   }
 
+check_optional:
   /* if it is optional dummy */
   if (OPTARGG(arg) && !f77_local) {
     astnew = mk_stmt(A_ENDIF, 0);
@@ -4215,7 +4305,7 @@ allocate_one_auto(int sptr)
       add_auto_bounds(sptr, Lbegin);
     }
     if (!ALIGNG(sptr)
-            ) {
+    ) {
       ADSC *ad;
       int r, i, ast, subscr[7];
       ad = AD_DPTR(DTYPEG(sptr));
