@@ -6,7 +6,9 @@ branches:
 
 environment:
   global:
+    MSYS2_ROOT: C:\msys64
     CONDA_INSTALL_LOCN: C:\\Miniconda36-x64
+    PYTHON2_LOCN: C:\\Python27-x64
     APPVEYOR_SAVE_CACHE_ON_FAILURE: true
 
 cache:
@@ -26,6 +28,9 @@ install:
   - cmd: conda install --yes llvmdev clangdev flang-meta cmake
   - cmd: conda install --yes -c isuruf kitware-ninja
 
+  - cmd: set "PATH=%PYTHON2_LOCN%\Scripts;%PYTHON2_LOCN%;%PATH%"
+  - cmd: appveyor DownloadFile "https://raw.githubusercontent.com/isuruf/flang/utils/llvm_utils_for_flang.zip" -FileName "utils.zip"
+  - cmd: 7z x -oC:\llvm_src utils.zip
 
 build_script:
   - ps: mkdir build
@@ -33,7 +38,7 @@ build_script:
   - cd build
   - set "PATH=%cd%\bin;%PATH%"
   - call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" x64
-  - cmake -G "Ninja" -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX% -DFLANG_INCLUDE_TESTS=ON -DFLANG_TEST_VERBOSE_MODE=ON -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_Fortran_COMPILER=flang -DCMAKE_VERBOSE_MAKEFILE=ON -DCMAKE_BUILD_TYPE=Release -DLLVM_INCLUDE_TESTS=ON -DLLVM_MAIN_SRC_DIR=C:\llvm_src ..
+  - cmake -G "Ninja" -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX%\Library -DFLANG_INCLUDE_TESTS=ON -DFLANG_TEST_VERBOSE_MODE=ON -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_Fortran_COMPILER=flang -DCMAKE_VERBOSE_MAKEFILE=ON -DCMAKE_BUILD_TYPE=Release -DLLVM_INCLUDE_TESTS=ON -DLLVM_MAIN_SRC_DIR=C:\llvm_src ..
   - ps: |
       Push-AppveyorArtifact .\CMakeFiles\CMakeOutput.log
       Push-AppveyorArtifact .\CMakeFiles\CMakeError.log
@@ -48,6 +53,12 @@ build_script:
   - ps: Push-AppveyorArtifact C:\Projects\flang\bin.zip
   - ps: Compress-Archive -Path C:\projects\flang\build\lib -DestinationPath C:\Projects\flang\lib.zip
   - ps: Push-AppveyorArtifact C:\Projects\flang\lib.zip
+  - cmd: cmake --build . --target install
 
 test_script:
-  - cmd: cmake --build . --target install
+  - cmd: set "PATH=%MSYS2_ROOT%\usr\bin\;%PATH%"
+  - cmd: cmake --build . --target FileCheck
+  - cmd: copy bin\FileCheck.exe binFileCheck.exe
+  - cmd: set "CPATH=%CONDA_PREFIX%\Library\include;%CPATH%"
+  - cmd: set "LIB=%CONDA_PREFIX%\Library\lib;%LIB%"
+  - cmd: cmake --build . --target check-flang
