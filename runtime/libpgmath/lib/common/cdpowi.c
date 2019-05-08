@@ -22,8 +22,8 @@ ZMPLXFUNC_Z_I(__mth_i_cdpowi)
   ZMPLXARGS_Z_I;
   int k;
   double fr, fi, gr, gi, tr, ti;
-  double _Complex z;
-  static const double _Complex c1plusi0 = 1.0 + I*0;
+  LIBPGMATH_COMPLEX_DOUBLE_TYPE z;
+  static const LIBPGMATH_COMPLEX_DOUBLE_TYPE c1plusi0 = LIBPGMATH_CREATE_COMPLEX(1.0, 0.0);
 
   fr = 1;
   fi = 0;
@@ -46,7 +46,7 @@ ZMPLXFUNC_Z_I(__mth_i_cdpowi)
     gi = ti;
   }
 
-  z = fr + I*fi;
+  z = LIBPGMATH_CREATE_COMPLEX(fr, fi);
   if (i < 0) {
     ZMPLX_CALL_ZR_Z_Z(__mth_i_cddiv,z,c1plusi0,z);
   }
