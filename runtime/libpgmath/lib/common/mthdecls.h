@@ -617,8 +617,12 @@ ZMPLXDECL_Z(__mth_i_cdtanh);
 
 #if defined(TARGET_WIN)
 #define LIBPGMATH_CREATE_COMPLEX(a, b) {a, b}
+#define LIBPGMATH_COMPLEX_FLOAT_TYPE _Fcomplex
+#define LIBPGMATH_COMPLEX_DOUBLE_TYPE _Dcomplex
 #else
 #define LIBPGMATH_CREATE_COMPLEX(a, b) a + I * b
+#define LIBPGMATH_COMPLEX_FLOAT_TYPE float _Complex
+#define LIBPGMATH_COMPLEX_DOUBLE_TYPE double _Complex
 #endif
 
 #if 0
