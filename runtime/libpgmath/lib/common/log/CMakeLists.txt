@@ -37,7 +37,7 @@ set(SRCS_VECTOR
   )
 
 
-if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64")
+if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64|AMD64")
 
 # Scalar 
 set(FLAGS_TMP "${FLAGS} -mtune=core-avx2 -march=core-avx2 -D_CPU=avx2")

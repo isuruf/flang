@@ -98,7 +98,7 @@ list(APPEND DEFINITIONS _GNU_SOURCE _ISOC99_SOURCE)
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   list(APPEND DEFINITIONS _GNU_SOURCE)
 endif()
-set(FLAGS "${FLAGS}-Wall -W -Wstrict-prototypes -Wwrite-strings -Werror ")
+set(FLAGS "${FLAGS}-Wall -W -Wstrict-prototypes -Wwrite-strings ")
 libmath_add_object_library("${SRCS}" "${FLAGS}" "${DEFINITIONS}" "isoc99")
 
 # isoc99_log2
@@ -140,7 +140,7 @@ set(SRCS
   sinh.c
   tan.c
   tanh.c)
-set(FLAGS "${FLAGS} -mavx2 -mfma -ffp-contract=fast")
+set(FLAGS "${FLAGS} -mavx2 -mfma -Xclang -ffp-contract=fast -Xclang -Wno-language-extension-token")
 list(APPEND DEFINITIONS_AVX2 ${DEFINITIONS} FN_PROTO_SUFFIX=_avx2)
 libmath_add_object_library("${SRCS}" "${FLAGS}" "${DEFINITIONS_AVX2}" "avx2")
 

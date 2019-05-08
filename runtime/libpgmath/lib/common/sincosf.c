@@ -32,6 +32,6 @@ float _Complex __mth_i_sincos(float a)
 {
   float s, c;
   __mth_sincos(a, &s, &c);
-  float _Complex r = LIBPGMATH_CREATE_COMPLEX(s, c);
+  LIBPGMATH_COMPLEX_FLOAT_TYPE r = LIBPGMATH_CREATE_COMPLEX(s, c);
   return r;
 }

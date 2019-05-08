@@ -79,6 +79,16 @@ float __builtin_cimagf(float _Complex);
 
 #define	__MTH_C99_CMPLX_SUFFIX	_c99
 
+#if defined(TARGET_WIN)
+#define LIBPGMATH_CREATE_COMPLEX(a, b) {a, b}
+#define LIBPGMATH_COMPLEX_FLOAT_TYPE _Fcomplex
+#define LIBPGMATH_COMPLEX_DOUBLE_TYPE _Dcomplex
+#else
+#define LIBPGMATH_CREATE_COMPLEX(a, b) a + I * b
+#define LIBPGMATH_COMPLEX_FLOAT_TYPE float _Complex
+#define LIBPGMATH_COMPLEX_DOUBLE_TYPE double _Complex
+#endif
+
 /* Old complex ABI */
 #define	FLTFUNC_C_(_f)    \
         float _f(float real, float imag)
@@ -152,42 +162,42 @@ float __builtin_cimagf(float _Complex);
 #else
 #define	FLTFUNC_C_C99_(_f)    \
         float MTHCONCAT__(_f,__MTH_C99_CMPLX_SUFFIX) \
-        (float _Complex carg)
+        (LIBPGMATH_COMPLEX_FLOAT_TYPE carg)
 #define	DBLFUNC_C_C99_(_f)    \
         double MTHCONCAT__(_f,__MTH_C99_CMPLX_SUFFIX) \
-        (double _Complex zarg)
+        (LIBPGMATH_COMPLEX_DOUBLE_TYPE zarg)
 
 #define	CMPLXFUNC_C_C99_(_f)    \
-        float _Complex MTHCONCAT__(_f,__MTH_C99_CMPLX_SUFFIX) \
-        (float _Complex carg)
+        LIBPGMATH_COMPLEX_FLOAT_TYPE MTHCONCAT__(_f,__MTH_C99_CMPLX_SUFFIX) \
+        (LIBPGMATH_COMPLEX_FLOAT_TYPE carg)
 #define	CMPLXFUNC_C_C_C99_(_f)  \
-        float _Complex MTHCONCAT__(_f,__MTH_C99_CMPLX_SUFFIX) \
-        (float _Complex carg1, float _Complex carg2)
+        LIBPGMATH_COMPLEX_FLOAT_TYPE MTHCONCAT__(_f,__MTH_C99_CMPLX_SUFFIX) \
+        (LIBPGMATH_COMPLEX_FLOAT_TYPE carg1, LIBPGMATH_COMPLEX_FLOAT_TYPE carg2)
 #define	CMPLXFUNC_C_F_C99_(_f)  \
-        float _Complex MTHCONCAT__(_f,__MTH_C99_CMPLX_SUFFIX) \
-        (float _Complex carg, float r)
+        LIBPGMATH_COMPLEX_FLOAT_TYPE MTHCONCAT__(_f,__MTH_C99_CMPLX_SUFFIX) \
+        (LIBPGMATH_COMPLEX_FLOAT_TYPE carg, float r)
 #define	CMPLXFUNC_C_I_C99_(_f)  \
-        float _Complex MTHCONCAT__(_f,__MTH_C99_CMPLX_SUFFIX) \
-        (float _Complex carg, int i)
+        LIBPGMATH_COMPLEX_FLOAT_TYPE MTHCONCAT__(_f,__MTH_C99_CMPLX_SUFFIX) \
+        (LIBPGMATH_COMPLEX_FLOAT_TYPE carg, int i)
 #define	CMPLXFUNC_C_K_C99_(_f)  \
-        float _Complex MTHCONCAT__(_f,__MTH_C99_CMPLX_SUFFIX) \
-        (float _Complex carg, long long i)
+        LIBPGMATH_COMPLEX_FLOAT_TYPE MTHCONCAT__(_f,__MTH_C99_CMPLX_SUFFIX) \
+        (LIBPGMATH_COMPLEX_FLOAT_TYPE carg, long long i)
 
 #define	ZMPLXFUNC_Z_C99_(_f)    \
-        double _Complex MTHCONCAT__(_f,__MTH_C99_CMPLX_SUFFIX) \
-        (double _Complex zarg)
+        LIBPGMATH_COMPLEX_DOUBLE_TYPE MTHCONCAT__(_f,__MTH_C99_CMPLX_SUFFIX) \
+        (LIBPGMATH_COMPLEX_DOUBLE_TYPE zarg)
 #define	ZMPLXFUNC_Z_Z_C99_(_f)  \
-        double _Complex MTHCONCAT__(_f,__MTH_C99_CMPLX_SUFFIX) \
-        (double _Complex zarg1, double _Complex zarg2)
+        LIBPGMATH_COMPLEX_DOUBLE_TYPE MTHCONCAT__(_f,__MTH_C99_CMPLX_SUFFIX) \
+        (LIBPGMATH_COMPLEX_DOUBLE_TYPE zarg1, LIBPGMATH_COMPLEX_DOUBLE_TYPE zarg2)
 #define	ZMPLXFUNC_Z_D_C99_(_f)  \
-        double _Complex MTHCONCAT__(_f,__MTH_C99_CMPLX_SUFFIX) \
-        (double _Complex zarg, double d)
+        LIBPGMATH_COMPLEX_DOUBLE_TYPE MTHCONCAT__(_f,__MTH_C99_CMPLX_SUFFIX) \
+        (LIBPGMATH_COMPLEX_DOUBLE_TYPE zarg, double d)
 #define	ZMPLXFUNC_Z_I_C99_(_f)  \
-        double _Complex MTHCONCAT__(_f,__MTH_C99_CMPLX_SUFFIX) \
-        (double _Complex zarg, int i)
+        LIBPGMATH_COMPLEX_DOUBLE_TYPE MTHCONCAT__(_f,__MTH_C99_CMPLX_SUFFIX) \
+        (LIBPGMATH_COMPLEX_DOUBLE_TYPE zarg, int i)
 #define	ZMPLXFUNC_Z_K_C99_(_f)  \
-        double _Complex MTHCONCAT__(_f,__MTH_C99_CMPLX_SUFFIX) \
-        (double _Complex zarg, long long i)
+        LIBPGMATH_COMPLEX_DOUBLE_TYPE MTHCONCAT__(_f,__MTH_C99_CMPLX_SUFFIX) \
+        (LIBPGMATH_COMPLEX_DOUBLE_TYPE zarg, long long i)
 #endif /* __cplusplus */
 
 #ifndef	MTH_CMPLX_C99_ABI
@@ -263,8 +273,8 @@ float __builtin_cimagf(float _Complex);
 #define	ZMPLXARGS_Z_I	ZMPLXARGS_Z
 #define	ZMPLXARGS_Z_K	ZMPLXARGS_Z
 
-#define	CRETURN_F_F(_r, _i) return ((_r) + I * (_i))
-#define	ZRETURN_D_D(_r, _i) return ((_r) + I * (_i))
+#define	CRETURN_F_F(_r, _i) { LIBPGMATH_COMPLEX_FLOAT_TYPE __r = LIBPGMATH_CREATE_COMPLEX(_r, _i); return __r; }
+#define	ZRETURN_D_D(_r, _i) { LIBPGMATH_COMPLEX_DOUBLE_TYPE __r = LIBPGMATH_CREATE_COMPLEX(_r, _i); return __r; }
 #define CRETURN_C(_c)       return (_c)
 #define ZRETURN_Z(_z)       return (_z)
 #define CRETURN_F(_f)       return (_f)
@@ -348,6 +358,14 @@ float __builtin_cimagf(float _Complex);
 #define BESSEL_Y0 _y0
 #define BESSEL_Y1 _y1
 #define BESSEL_YN _yn
+
+#define CACOSF cacosf
+#define CASINF casinf
+#define CATANF catanf
+#define CCOSHF ccoshf
+#define CSINHF csinhf
+#define CTANHF ctanhf
+#define CTANF ctanf
 
 /* define POWF specially here for win64 until we can leverage
  * our usual builtin mechanism on that target
@@ -615,16 +633,6 @@ ZMPLXDECL_Z(__mth_i_cdtan);
 ZMPLXDECL_Z(__mth_i_cdtanh);
 
 
-#if defined(TARGET_WIN)
-#define LIBPGMATH_CREATE_COMPLEX(a, b) {a, b}
-#define LIBPGMATH_COMPLEX_FLOAT_TYPE _Fcomplex
-#define LIBPGMATH_COMPLEX_DOUBLE_TYPE _Dcomplex
-#else
-#define LIBPGMATH_CREATE_COMPLEX(a, b) a + I * b
-#define LIBPGMATH_COMPLEX_FLOAT_TYPE float _Complex
-#define LIBPGMATH_COMPLEX_DOUBLE_TYPE double _Complex
-#endif
-
 #if 0
 #if defined(TARGET_WIN)
 /* the following are part of Open Tools 12, we build with Open Tools 10 */
@@ -701,5 +709,16 @@ extern _Complex double ctan(_Complex double);
  * during the build process.
  */
 
+#if !defined(TARGET_WIN)
 #define	__mth_sincos(_a,_s,_c) sincosf(_a,_s,_c)
 #define	__mth_dsincos(_a,_s,_c) sincos(_a,_s,_c)
+#else
+static inline void sincosf(float angle, float *s, float *c) {
+    *s = sinf(angle);
+    *c = cosf(angle);	
+};
+static inline void sincos(double angle, double *s, double *c) {
+    *s = sin(angle);
+    *c = cos(angle);	
+};
+#endif

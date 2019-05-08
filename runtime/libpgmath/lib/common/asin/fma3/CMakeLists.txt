@@ -21,8 +21,8 @@ get_property(FLAGS GLOBAL PROPERTY "FLAGS_L2")
 set(SRCS)
 
 # Set source files, compiler flags and definitions
-if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64")
-  if(${CMAKE_SYSTEM_NAME} MATCHES "Linux|Darwin")
+if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64|AMD64")
+  if(${CMAKE_SYSTEM_NAME} MATCHES "Linux|Darwin|Windows")
     set(SRCS
       sdasin.cpp
       ssasin.cpp
@@ -30,7 +30,7 @@ if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64")
       vdasin4.cpp
       vsasin4.cpp
       vsasin8.cpp)
-    libmath_add_object_library("${SRCS}" "${FLAGS}" "${DEFINITIONS}" "")
+    libmath_add_object_library("${SRCS}" "${FLAGS} -mfma -mavx2" "${DEFINITIONS}" "")
     set(SRCS
       vdasin8.cpp
       vsasin16.cpp)
