@@ -348,13 +348,6 @@ float __builtin_cimagf(float _Complex);
 #define BESSEL_Y0 _y0
 #define BESSEL_Y1 _y1
 #define BESSEL_YN _yn
-#define CACOSF cacos
-#define CASINF casin
-#define CATANF catan
-#define CCOSHF ccosh
-#define CSINHF csinh
-#define CTANHF ctanh
-#define CTANF ctan
 
 /* define POWF specially here for win64 until we can leverage
  * our usual builtin mechanism on that target
@@ -404,7 +397,6 @@ float __builtin_cimagf(float _Complex);
 #define COPYSIGNF copysignf
 #define COPYSIGN copysign
 
-#if !defined(TARGET_WIN)
 #define CACOSF cacosf
 #define CASINF casinf
 #define CATANF catanf
@@ -412,15 +404,6 @@ float __builtin_cimagf(float _Complex);
 #define CSINHF csinhf
 #define CTANHF ctanhf
 #define CTANF ctanf
-#else
-#define CACOSF cacos
-#define CASINF casin
-#define CATANF catan
-#define CCOSHF ccosh
-#define CSINHF csinh
-#define CTANHF ctanh
-#define CTANF ctan
-#endif
 
 #if defined(TARGET_WIN)
 #define BESSEL_J0F _j0
