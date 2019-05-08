@@ -28,5 +28,6 @@ double _Complex __mth_i_dsincos(double a)
 {
   double s, c;
   __mth_dsincos(a, &s, &c);
-  return s + I * c;
+  float _Complex r = LIBPGMATH_CREATE_COMPLEX(s, c);
+  return r;
 }

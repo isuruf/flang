@@ -632,6 +632,12 @@ ZMPLXDECL_Z(__mth_i_cdtan);
 ZMPLXDECL_Z(__mth_i_cdtanh);
 
 
+#if defined(TARGET_WIN)
+#define LIBPGMATH_CREATE_COMPLEX(a, b) {a, b}
+#else
+#define LIBPGMATH_CREATE_COMPLEX(a, b) a + I * b
+#endif
+
 #if 0
 #if defined(TARGET_WIN)
 /* the following are part of Open Tools 12, we build with Open Tools 10 */
