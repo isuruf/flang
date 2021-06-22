@@ -41,6 +41,7 @@
 #include "main.h"
 #include "symfun.h"
 #include "ilidir.h"
+#include "fdirect.h"
 
 #ifdef OMP_OFFLOAD_LLVM
 #include "ompaccel.h"
@@ -117,7 +118,6 @@ static char *fn_sig_ptr = NULL;
 static void insert_entry_label(int);
 static void insert_jump_entry_instr(int);
 static void store_return_value_for_entry(OPERAND *, int);
-static void insert_llvm_dbg_value(OPERAND *, LL_MDRef, SPTR, LL_Type *);
 
 static int openacc_prefix_sptr = 0;
 static unsigned addressElementSize;
@@ -210,6 +210,7 @@ static struct {
   unsigned _fcmp_negate : 1;
   unsigned _last_stmt_is_branch : 1;
   unsigned _rw_no_dep_check : 1;
+  unsigned _rw_acc_grp_check : 1;
 } CGMain;
 
 #define new_ebb (CGMain._new_ebb)
@@ -221,6 +222,7 @@ static struct {
 #define fcmp_negate (CGMain._fcmp_negate)
 #define last_stmt_is_branch (CGMain._last_stmt_is_branch)
 #define rw_nodepcheck (CGMain._rw_no_dep_check)
+#define rw_access_group (CGMain._rw_acc_grp_check)
 
 static int funcId;
 static int fnegcc[17] = LLCCF_NEG;
@@ -233,6 +235,9 @@ static int *idxstack = NULL;
 static hashmap_t sincos_map;
 static hashmap_t sincos_imap;
 static LL_MDRef cached_loop_metadata;
+static LL_MDRef cached_unroll_enable_metadata;
+static LL_MDRef cached_unroll_disable_metadata;
+static LL_MDRef cached_access_group_metadata;
 
 static bool CG_cpu_compile = false;
 
@@ -331,6 +336,7 @@ static const char *get_atomicrmw_opname(LL_InstrListFlags);
 static const char *get_atomic_memory_order_name(int);
 static void insert_llvm_memcpy(int, int, OPERAND *, OPERAND *, int, int, int);
 static void insert_llvm_memset(int, int, OPERAND *, int, int, int, int);
+static void insert_llvm_prefetch(int ilix, OPERAND *dest_op);
 static SPTR get_call_sptr(int);
 static LL_Type *make_function_type_from_args(LL_Type *return_type,
                                              OPERAND *first_arg_op,
@@ -797,6 +803,21 @@ clear_rw_nodepchk(void)
   cached_loop_metadata = ll_get_md_null();
 }
 
+INLINE static void
+mark_rw_access_grp(int bih)
+{
+  rw_access_group = 1;
+  if (!BIH_NODEPCHK2(bih))
+    cached_loop_metadata = ll_get_md_null();
+}
+
+INLINE static void
+clear_rw_access_grp(void)
+{
+  rw_access_group = 0;
+  cached_loop_metadata = ll_get_md_null();
+}
+
 void
 print_personality(void)
 {
@@ -947,6 +968,20 @@ assign_fortran_storage_classes(void)
   }
 } /* end assign_fortran_storage_classes() */
 
+/*
+ * when vector always pragma is specified, "llvm.loop.parallel_accesses" metadata has
+ * to be generated along with "llvm.access.group" for each load/store instructions.
+ */
+INLINE static LL_MDRef
+cons_loop_parallel_accesses_metadata(void)
+{
+  LL_MDRef lvcomp[2];
+
+  lvcomp[0] = ll_get_md_string(cpu_llvm_module, "llvm.loop.parallel_accesses");
+  lvcomp[1] = cached_access_group_metadata;
+  return ll_get_md_node(cpu_llvm_module, LL_PlainMDNode, lvcomp, 2);
+} // cons_loop_parallel_accesses_metadata
+
 INLINE static LL_MDRef
 cons_novectorize_metadata(void)
 {
@@ -964,6 +999,24 @@ cons_novectorize_metadata(void)
   ll_extend_md_node(cpu_llvm_module, rv, loopVect);
   cpu_llvm_module->loop_md = rv;
   return rv;
+}
+
+INLINE static LL_MDRef
+cons_nounroll_metadata(void)
+{
+  LL_MDRef lvcomp[1];
+  LL_MDRef loopUnroll;
+  LL_MDRef rv;
+
+  if (LL_MDREF_IS_NULL(cached_unroll_disable_metadata)) {
+   rv = ll_create_flexible_md_node(cpu_llvm_module);
+   lvcomp[0] = ll_get_md_string(cpu_llvm_module, "llvm.loop.unroll.disable");
+   loopUnroll= ll_get_md_node(cpu_llvm_module, LL_PlainMDNode, lvcomp, 1);
+   ll_extend_md_node(cpu_llvm_module, rv, rv);
+   ll_extend_md_node(cpu_llvm_module, rv, loopUnroll);
+   cached_unroll_disable_metadata=rv;
+  }
+  return cached_unroll_disable_metadata;
 }
 
 INLINE static LL_MDRef
@@ -1269,6 +1322,51 @@ cons_no_depchk_metadata(void)
   return cached_loop_metadata;
 }
 
+static LL_MDRef
+cons_vec_always_metadata(void)
+{
+  if (LL_MDREF_IS_NULL(cached_loop_metadata)) {
+    LL_MDRef vectorize = cons_vectorize_metadata();
+    LL_MDRef paraccess = cons_loop_parallel_accesses_metadata();
+    LL_MDRef md = ll_create_flexible_md_node(cpu_llvm_module);
+    ll_extend_md_node(cpu_llvm_module, md, md);
+    ll_extend_md_node(cpu_llvm_module, md, vectorize);
+    ll_extend_md_node(cpu_llvm_module, md, paraccess);
+    cached_loop_metadata = md;
+  }
+  return cached_loop_metadata;
+}
+
+static LL_MDRef
+cons_unroll_metadata(void) //Calls the metadata for unroll
+{
+  LL_MDRef lvcomp[1];
+  LL_MDRef unroll;
+  if (LL_MDREF_IS_NULL(cached_unroll_enable_metadata)) {
+    lvcomp[0] = ll_get_md_string(cpu_llvm_module, "llvm.loop.unroll.enable");
+    unroll= ll_get_md_node(cpu_llvm_module, LL_PlainMDNode, lvcomp, 1);
+    LL_MDRef md = ll_create_flexible_md_node(cpu_llvm_module);
+    ll_extend_md_node(cpu_llvm_module, md, md);
+    ll_extend_md_node(cpu_llvm_module, md, unroll);
+    cached_unroll_enable_metadata = md;
+  }
+  return cached_unroll_enable_metadata;
+}
+
+static LL_MDRef
+cons_unroll_count_metadata(int unroll_factor)
+{
+  LL_MDRef lvcomp[2];
+  LL_MDRef unroll;
+  lvcomp[0] = ll_get_md_string(cpu_llvm_module, "llvm.loop.unroll.count");
+  lvcomp[1] = ll_get_md_i32(cpu_llvm_module, unroll_factor);
+  unroll= ll_get_md_node(cpu_llvm_module, LL_PlainMDNode, lvcomp, 2);
+  LL_MDRef md = ll_create_flexible_md_node(cpu_llvm_module);
+  ll_extend_md_node(cpu_llvm_module, md, md);
+  ll_extend_md_node(cpu_llvm_module, md, unroll);
+  return md;
+}
+
 INLINE static bool
 ignore_simd_block(int bih)
 {
@@ -1293,6 +1391,36 @@ remove_dead_instrs(void)
       instr = instr->prev;
   }
 }
+
+/*
+ * Check if the branch instruction is having a loop pragma
+ * xbit/xflag pair.
+ */
+static bool check_for_loop_directive(int branch_line_number, int xbit, int xflag) {
+  int iter;
+  LPPRG *lpprg;
+
+  // Check if any loop pragmas are specified
+  if (direct.lpg.avail > 1) {
+    // Loop thru all the loop pragmas
+    for (iter = 1; iter < direct.lpg.avail; iter++) {
+      lpprg = direct.lpg.stgb + iter;
+      // check if xbit/xflag pair is available
+      if ((lpprg->dirset.x[xbit] & xflag)
+          &&
+          (branch_line_number == lpprg->end_line)) {
+        return  true;
+      } // if
+
+      if (branch_line_number < lpprg->beg_line) {
+        // branch instruction is not having any pragma specified.
+        break;
+      } // if
+    } // for
+  } // if
+
+  return false;
+} // check_for_loop_directive
 
 /**
    \brief process debug info of constants with parameter attribute.
@@ -1346,6 +1474,7 @@ schedule(void)
   SPTR func_sptr = GBL_CURRFUNC;
   bool first = true;
   CG_cpu_compile = true;
+  int unroll_factor = 0;
 
   funcId++;
   assign_fortran_storage_classes();
@@ -1487,6 +1616,9 @@ restartConcur:
   bih = BIH_NEXT(0);
   if ((XBIT(34, 0x200) || gbl.usekmpc) && !processHostConcur)
     bih = gbl.entbih;
+
+  cached_access_group_metadata = ll_create_distinct_md_node(cpu_llvm_module, LL_PlainMDNode, NULL, 0);
+
   /* construct the body of the function */
   for (; bih; bih = BIH_NEXT(bih))
     for (ilt = BIH_ILTFIRST(bih); ilt; ilt = ILT_NEXT(ilt))
@@ -1569,6 +1701,20 @@ restartConcur:
     } else {
       clear_rw_nodepchk();
     }
+    if (XBIT(191, 0x4)) {
+      fix_nodepchk_flag(bih);
+      mark_rw_access_grp(bih);
+    } else {
+      clear_rw_access_grp();
+    }
+    if (flg.x[9] > 0)
+      unroll_factor = flg.x[9];
+    if (XBIT(11, 0x2) && unroll_factor)
+      BIH_UNROLL_COUNT(bih) = true;
+    else if (XBIT(11, 0x1))
+      BIH_UNROLL(bih) = true;
+    else if (XBIT(11, 0x400))
+      BIH_NOUNROLL(bih) = true;
     close_pragma();
 
     for (ilt = BIH_ILTFIRST(bih); ilt; ilt = ILT_NEXT(ilt)) {
@@ -1620,13 +1766,43 @@ restartConcur:
           LL_MDRef loop_md = cons_no_depchk_metadata();
           INSTR_LIST *i = find_last_executable(llvm_info.last_instr);
           if (i) {
-            i->flags |= SIMD_BACKEDGE_FLAG;
+            i->flags |= LOOP_BACKEDGE_FLAG;
+            i->misc_metadata = loop_md;
+          }
+        }
+        if ((check_for_loop_directive(ILT_LINENO(ilt), 191, 0x4))) {
+          LL_MDRef loop_md = cons_vec_always_metadata();
+          INSTR_LIST *i = find_last_executable(llvm_info.last_instr);
+          if (i) {
+            i->flags |= LOOP_BACKEDGE_FLAG;
+            i->misc_metadata = loop_md;
+          }
+        }
+        if (BIH_UNROLL(bih)) {
+          LL_MDRef loop_md = cons_unroll_metadata();
+          INSTR_LIST *i = find_last_executable(llvm_info.last_instr);
+          if (i) {
+            i->flags |= LOOP_BACKEDGE_FLAG;
+            i->misc_metadata = loop_md;
+          }
+        } else if (BIH_UNROLL_COUNT(bih)) {
+          LL_MDRef loop_md = cons_unroll_count_metadata(unroll_factor);
+          INSTR_LIST *i = find_last_executable(llvm_info.last_instr);
+          if (i) {
+            i->flags |= LOOP_BACKEDGE_FLAG;
+            i->misc_metadata = loop_md;
+          }
+        } else if (BIH_NOUNROLL(bih)) {
+          LL_MDRef loop_md = cons_nounroll_metadata();
+          INSTR_LIST *i = find_last_executable(llvm_info.last_instr);
+          if (i) {
+            i->flags |= LOOP_BACKEDGE_FLAG;
             i->misc_metadata = loop_md;
           }
         }
         if (ignore_simd_block(bih)) {
           LL_MDRef loop_md = cons_novectorize_metadata();
-          llvm_info.last_instr->flags |= SIMD_BACKEDGE_FLAG;
+          llvm_info.last_instr->flags |= LOOP_BACKEDGE_FLAG;
           llvm_info.last_instr->misc_metadata = loop_md;
         }
       } else if ((ILT_ST(ilt) || ILT_DELETE(ilt)) &&
@@ -1683,6 +1859,9 @@ restartConcur:
         }
       } else if (opc == IL_FENCE) {
         gen_llvm_fence_instruction(ilix);
+      } else if (opc == IL_PREFETCH) {
+        LL_Type *optype = make_lltype_from_dtype(DT_CPTR);
+        insert_llvm_prefetch(ilix, gen_llvm_expr(ILI_OPND(ilix, 1), optype));
       } else {
       /* may be a return; otherwise mostly ignored */
       /* However, need to keep track of FREE* ili, to match them
@@ -2702,11 +2881,60 @@ write_no_depcheck_metadata(LL_Module *module, INSTR_LIST *insn)
   }
 }
 
+INLINE static void
+write_llaccgroup_metadata(LL_Module *module, INSTR_LIST *insn)
+{
+  if (insn->flags & LDST_HAS_ACCESSGRP_METADATA) {
+    char buf[64];
+    int n;
+    DEBUG_ASSERT(insn->misc_metadata, "missing metadata");
+    n = snprintf(buf, 64, ", !llvm.access.group !%u",
+                 LL_MDREF_value(cached_access_group_metadata));
+    DEBUG_ASSERT(n < 64, "buffer overrun");
+    print_token(buf);
+  }
+}
+
 /* write out the struct member types */
 static void
 write_verbose_type(LL_Type *ll_type)
 {
   print_token(ll_type->str);
+}
+
+/* whether debug location should be suppressed */
+static bool
+should_suppress_debug_loc(INSTR_LIST *instrs)
+{
+  if (!instrs)
+    return false;
+
+  // return true if not a call instruction
+  switch (instrs->i_name) {
+  case I_INVOKE:
+    return false;
+  case I_CALL:
+    // f90 runtime functions fort_init and f90_* dont need debug location
+    if (instrs->prev && (instrs->operands->ot_type == OT_TMP) &&
+        (instrs->operands->tmps == instrs->prev->tmps) &&
+        (instrs->prev->operands->ot_type == OT_VAR)) {
+      // We dont need to expose those internals in prolog to user
+      // %1 = bitcast void (...)* @fort_init to void (i8*, ...)*
+      // call void (i8*, ...) %1(i8* %0)
+      // %8 = bitcast void (...)* @f90_template1_i8 to void (i8*, i8*, i8*, i8*,
+      //      i8*, i8*, ...)*
+      // call void (i8*, i8*, i8*, i8*, i8*, i8*, ...) %8(i8*
+      //      %2, i8* %3, i8* %4, i8* %5, i8* %6, i8* %7)
+
+      if (char *name_str = instrs->prev->operands->string) {
+        return (!strncmp(name_str, "@fort_init", strlen("@fort_init")) ||
+                !strncmp(name_str, "@f90_", strlen("@f90_")));
+      }
+    }
+    return false;
+  default:
+    return true;
+  }
 }
 
 /**
@@ -3071,6 +3299,7 @@ write_instructions(LL_Module *module)
         assert(p->next == NULL, "write_instructions(), bad next ptr", 0,
                ERR_Fatal);
         write_no_depcheck_metadata(module, instrs);
+        write_llaccgroup_metadata(module, instrs);
         write_tbaa_metadata(module, instrs->ilix, instrs->operands,
                             instrs->flags);
         break;
@@ -3091,6 +3320,7 @@ write_instructions(LL_Module *module)
 
         write_memory_order_and_alignment(instrs);
         write_no_depcheck_metadata(module, instrs);
+        write_llaccgroup_metadata(module, instrs);
         write_tbaa_metadata(module, instrs->ilix, instrs->operands->next,
                             instrs->flags & VOLATILE_FLAG);
         break;
@@ -3101,7 +3331,7 @@ write_instructions(LL_Module *module)
           print_token(llvm_instr_names[i_name]);
           print_space(1);
           write_operands(instrs->operands, 0);
-          if (instrs->flags & SIMD_BACKEDGE_FLAG) {
+          if (instrs->flags & LOOP_BACKEDGE_FLAG) {
             char buf[32];
             LL_MDRef loop_md = instrs->misc_metadata;
             snprintf(buf, 32, ", !llvm.loop !%u", LL_MDREF_value(loop_md));
@@ -3243,8 +3473,17 @@ write_instructions(LL_Module *module)
                ERR_Fatal);
       }
     }
-    if (!ISNVVMCODEGEN &&
-        (!LL_MDREF_IS_NULL(instrs->dbg_line_op) && !dbg_line_op_written)) {
+    /*
+     *  Do not dump debug location here if
+     *  - it is NULL
+     *  - it is already written (dbg_line_op_written) or
+     *  - it is a known internal (f90 runtime) call in prolog (fort_init &
+     * f90_*)
+     */
+    if (!(LL_MDREF_IS_NULL(instrs->dbg_line_op) || dbg_line_op_written ||
+          ((instrs->dbg_line_op ==
+            lldbg_get_subprogram_line(module->debug_info)) &&
+           should_suppress_debug_loc(instrs)))) {
       print_dbg_line(instrs->dbg_line_op);
     }
 #if DEBUG
@@ -3296,6 +3535,10 @@ mk_store_instr(OPERAND *val, OPERAND *addr)
   if (rw_nodepcheck) {
     insn->flags |= LDST_HAS_METADATA;
     insn->misc_metadata = cons_no_depchk_metadata();
+  }
+  if (rw_access_group) {
+    insn->flags |= LDST_HAS_ACCESSGRP_METADATA;
+    insn->misc_metadata = cons_vec_always_metadata();
   }
   ad_instr(0, insn);
   return insn;
@@ -3558,6 +3801,10 @@ ad_csed_instr(LL_InstrName instr_name, int ilix, LL_Type *ll_type,
     flags |= LDST_HAS_METADATA;
     instr->misc_metadata = cons_no_depchk_metadata();
   }
+  if ((instr_name == I_LOAD) && rw_access_group) {
+    flags |= LDST_HAS_ACCESSGRP_METADATA;
+    instr->misc_metadata = cons_vec_always_metadata();
+  }
   instr->flags = flags;
   ad_instr(ilix, instr);
   return operand;
@@ -3601,6 +3848,8 @@ ad_instr(int ilix, INSTR_LIST *instr)
 static bool
 cancel_store(int ilix, int op_ili, int addr_ili)
 {
+  if(!ENABLE_CSE_OPT)
+    return false;
   ILI_OP op_opc = ILI_OPC(op_ili);
   bool csed = false;
 
@@ -4441,6 +4690,52 @@ gen_call_pgocl_intrinsic(char *fname, OPERAND *params, LL_Type *return_ll_type,
 }
 
 static void
+insert_llvm_prefetch(int ilix, OPERAND *dest_op)
+{
+  OPERAND *call_op;
+
+  DBGTRACEIN("")
+
+  const char *intrinsic_name = "@llvm.prefetch";
+  char *fname = (char *)getitem(LLVM_LONGTERM_AREA, strlen(intrinsic_name) + 1);
+  strcpy(fname, intrinsic_name);
+  INSTR_LIST *Curr_Instr = make_instr(I_CALL);
+  Curr_Instr->flags |= CALL_INTRINSIC_FLAG;
+  Curr_Instr->operands = call_op = make_operand();
+  call_op->ot_type = OT_CALL;
+  call_op->ll_type = make_void_lltype();
+  Curr_Instr->ll_type = call_op->ll_type;
+  call_op->string = fname;
+  call_op->next = dest_op;
+
+  /* setup rest of the parameters for llvm.prefetch */
+  LL_Type *int32_type = make_int_lltype(32);
+  /* prefetch type: 0 = read, 1 = write */
+  dest_op->next = make_constval_op(int32_type, 0, 0);
+  /* temporal locality specifier: 3 = extremely local, keep in cache */
+  dest_op->next->next = make_constval_op(int32_type, 3, 0);
+  /* cache type: 0 = instruction, 1 = data */
+  dest_op->next->next->next = make_constval_op(int32_type, 1, 0);
+  ad_instr(ilix, Curr_Instr);
+
+  /* add global define of @llvm.prefetch to external function list, if needed */
+  static bool prefetch_defined = false;
+  if (!prefetch_defined) {
+    prefetch_defined = true;
+    const char *intrinsic_decl = "declare void @llvm.prefetch(i8* nocapture, i32, i32, i32)";
+    char *gname = (char *)getitem(LLVM_LONGTERM_AREA, strlen(intrinsic_decl) + 1);
+    strcpy(gname, intrinsic_decl);
+    EXFUNC_LIST *exfunc = (EXFUNC_LIST *)getitem(LLVM_LONGTERM_AREA, sizeof(EXFUNC_LIST));
+    memset(exfunc, 0, sizeof(EXFUNC_LIST));
+    exfunc->func_def = gname;
+    exfunc->flags |= EXF_INTRINSIC;
+    add_external_function_declaration(fname, exfunc);
+  }
+
+  DBGTRACEOUT("")
+} /* insert_llvm_prefetch */
+
+static void
 insert_llvm_memset(int ilix, int size, OPERAND *dest_op, int len, int value,
                    int align, int is_volatile)
 {
@@ -4536,7 +4831,7 @@ insert_llvm_memcpy(int ilix, int size, OPERAND *dest_op, OPERAND *src_op,
    \param sptr    symbol
    \param llTy    preferred type of \p sptr or \c NULL
  */
-static void
+void
 insert_llvm_dbg_declare(LL_MDRef mdnode, SPTR sptr, LL_Type *llTy,
                         OPERAND *exprMDOp, OperandFlag_t opflag)
 {
@@ -4565,15 +4860,19 @@ insert_llvm_dbg_declare(LL_MDRef mdnode, SPTR sptr, LL_Type *llTy,
     } else {
       LL_DebugInfo *di = cpu_llvm_module->debug_info;
       LL_MDRef md;
-      /* Handle the Fortran allocatable array cases. Emit expression
-       * mdnode with sigle argument of DW_OP_deref to workaround known
-       * gdb bug not able to debug array bounds.
-       */
-      if (ftn_array_need_debug_info(sptr)) {
-        const unsigned deref = lldbg_encode_expression_arg(LL_DW_OP_deref, 0);
-        md = lldbg_emit_expression_mdnode(di, 1, deref);
-      } else
+      if (ll_feature_debug_info_ver90(&cpu_llvm_module->ir)) {
         md = lldbg_emit_empty_expression_mdnode(di);
+      } else {
+        /* Handle the Fortran allocatable array cases. Emit expression
+         * mdnode with single argument of DW_OP_deref to workaround known
+         * gdb bug not able to debug array bounds.
+         */
+        if (ftn_array_need_debug_info(sptr)) {
+          const unsigned deref = lldbg_encode_expression_arg(LL_DW_OP_deref, 0);
+          md = lldbg_emit_expression_mdnode(di, 1, deref);
+        } else
+          md = lldbg_emit_empty_expression_mdnode(di);
+      }
       call_op->next->next->next = make_mdref_op(md);
     }
   }
@@ -4646,7 +4945,10 @@ gen_const_expr(int ilix, LL_Type *expected_type)
              expected_type->data_type, ERR_Fatal);
       operand->ll_type = expected_type;
     } else {
-      operand->ll_type = make_lltype_from_dtype(DT_INT);
+       if (expected_type && expected_type->data_type == LL_PTR)
+         operand->ll_type = make_lltype_from_dtype(DT_INT8);
+       else
+         operand->ll_type = make_lltype_from_dtype(DT_INT);
       operand->val.sptr = sptr;
     }
     break;
@@ -5200,9 +5502,8 @@ gen_gep_index(OPERAND *base_op, LL_Type *llt, int index)
   return gen_gep_op(0, base_op, llt, make_constval32_op(index));
 }
 
-static void
-insert_llvm_dbg_value(OPERAND *load, LL_MDRef mdnode,
-                      SPTR sptr, LL_Type *type)
+void
+insert_llvm_dbg_value(OPERAND *load, LL_MDRef mdnode, SPTR sptr, LL_Type *type)
 {
   static bool defined = false;
   OPERAND *callOp;
@@ -6550,6 +6851,10 @@ make_load(int ilix, OPERAND *load_op, LL_Type *rslt_type, MSZ msz,
   if (rw_nodepcheck) {
     flags |= LDST_HAS_METADATA;
     Curr_Instr->misc_metadata = cons_no_depchk_metadata();
+  }
+  if (rw_access_group) {
+    flags |= LDST_HAS_ACCESSGRP_METADATA;
+    Curr_Instr->misc_metadata = cons_vec_always_metadata();
   }
   Curr_Instr->flags = (LL_InstrListFlags)flags;
   load_op->next = NULL;
@@ -10924,9 +11229,22 @@ addDebugForLocalVar(SPTR sptr, LL_Type *type)
 {
   if (need_debug_info(sptr)) {
     /* Dummy sptrs are treated as local (see above) */
-    LL_MDRef param_md = lldbg_emit_local_variable(
-        cpu_llvm_module->debug_info, sptr, BIH_FINDEX(gbl.entbih), true);
-    insert_llvm_dbg_declare(param_md, sptr, type, NULL, OPF_NONE);
+    if (ll_feature_debug_info_ver90(&cpu_llvm_module->ir) &&
+        ftn_array_need_debug_info(sptr)) {
+      SPTR array_sptr = (SPTR)REVMIDLNKG(sptr);
+      LL_MDRef array_md =
+          lldbg_emit_local_variable(cpu_llvm_module->debug_info, array_sptr,
+                                    BIH_FINDEX(gbl.entbih), true);
+      LL_Type *sd_type = LLTYPE(SDSCG(array_sptr));
+      if (sd_type && sd_type->data_type == LL_PTR)
+        sd_type = sd_type->sub_types[0];
+      insert_llvm_dbg_declare(array_md, SDSCG(array_sptr),
+                              sd_type, NULL, OPF_NONE);
+    } else {
+      LL_MDRef param_md = lldbg_emit_local_variable(
+          cpu_llvm_module->debug_info, sptr, BIH_FINDEX(gbl.entbih), true);
+      insert_llvm_dbg_declare(param_md, sptr, type, NULL, OPF_NONE);
+    }
   }
 }
 
@@ -12691,7 +13009,21 @@ INLINE static void
 formalsAddDebug(SPTR sptr, unsigned i, LL_Type *llType, bool mayHide)
 {
   if (formalsNeedDebugInfo(sptr)) {
-    LL_DebugInfo *db = cpu_llvm_module->debug_info;
+    bool is_ptr_alc_arr = false;
+    SPTR new_sptr = (SPTR)REVMIDLNKG(sptr);
+    if (ll_feature_debug_info_ver90(&cpu_llvm_module->ir) &&
+        CCSYMG(sptr) /* Otherwise it can be a cray pointer */ &&
+        (new_sptr && (STYPEG(new_sptr) == ST_ARRAY) &&
+         (POINTERG(new_sptr) || ALLOCATTRG(new_sptr))) &&
+        SDSCG(new_sptr)) {
+      is_ptr_alc_arr = true;
+      sptr = new_sptr;
+    }
+    LL_DebugInfo *db = current_module->debug_info;
+    if (ll_feature_debug_info_ver90(&cpu_llvm_module->ir) &&
+        STYPEG(sptr) == ST_ARRAY && CCSYMG(sptr) &&
+        !LL_MDREF_IS_NULL(get_param_mdnode(db, sptr)))
+      return;
     LL_MDRef param_md = lldbg_emit_param_variable(
         db, sptr, BIH_FINDEX(gbl.entbih), i, CCSYMG(sptr));
     if (!LL_MDREF_IS_NULL(param_md)) {
@@ -12700,6 +13032,12 @@ formalsAddDebug(SPTR sptr, unsigned i, LL_Type *llType, bool mayHide)
                               ? NULL
                               : cons_expression_metadata_operand(llTy);
       OperandFlag_t flag = (mayHide && CCSYMG(sptr)) ? OPF_HIDDEN : OPF_NONE;
+      // For pointer, allocatable, assumed shape and assumed rank arrays, pass
+      // descriptor in place of base address.
+      if (ll_feature_debug_info_ver90(&cpu_llvm_module->ir) &&
+          (is_ptr_alc_arr || ASSUMRANKG(sptr) || ASSUMSHPG(sptr)) &&
+          SDSCG(sptr))
+        sptr = SDSCG(sptr);
       insert_llvm_dbg_declare(param_md, sptr, llTy, exprMDOp, flag);
     }
   }
@@ -12732,8 +13070,9 @@ process_formal_arguments(LL_ABI_Info *abi)
     bool ftn_byval = false;
 
     assert(arg->sptr, "Unnamed function argument", i, ERR_Fatal);
-    assert(SNAME(arg->sptr) == NULL, "Argument sptr already processed",
-           arg->sptr, ERR_Fatal);
+    if (!ll_feature_debug_info_ver90(&cpu_llvm_module->ir))
+      assert(SNAME(arg->sptr) == NULL, "Argument sptr already processed",
+             arg->sptr, ERR_Fatal);
     if ((SCG(arg->sptr) != SC_DUMMY) && formalsMidnumNotDummy(arg->sptr)) {
       process_sptr(arg->sptr);
       continue;
@@ -13046,10 +13385,15 @@ print_function_signature(int func_sptr, const char *fn_name, LL_ABI_Info *abi,
   if (need_debug_info(SPTR_NULL)) {
     /* 'attributes #0 = { ... }' to be emitted later */
     print_token(" #0");
-  } else if (!XBIT(183, 0x10)) {
+  } else if (!XBIT(183, 0x10) || XBIT(14, 0x8)) {
     /* Nobody sets -x 183 0x10, besides Flang. We're disabling LLVM inlining for
      * proprietary compilers. */
+    /* 2nd XBIT - Apply noinline attribute if the pragma "noinline" is given */
     print_token(" noinline");
+  }
+  if (XBIT(191, 0x2)) {
+    /* Apply alwaysinline attribute if the pragma "forceinline" is given */
+    print_token(" alwaysinline");
   }
 
   if (func_sptr > NOSYM) {
@@ -13247,7 +13591,10 @@ cg_llvm_init(void)
 
   CHECK(TARGET_PTRSIZE == size_of(DT_CPTR));
 
-  triple = LLVM_DEFAULT_TARGET_TRIPLE;
+  if (flg.llvm_target_triple)
+    triple = flg.llvm_target_triple;
+  else
+    triple = LLVM_DEFAULT_TARGET_TRIPLE;
 
   ir_version = get_llvm_version();
 
@@ -13752,4 +14099,16 @@ is_vector_x86_mmx(LL_Type *type) {
     return true;
   }
   return false;
+}
+
+int
+get_parnum(SPTR sptr)
+{
+  for (int parnum = 1; parnum <= llvm_info.abi_info->nargs; parnum++) {
+    if (llvm_info.abi_info->arg[parnum].sptr == sptr) {
+      return parnum;
+    }
+  }
+
+  return 0;
 }

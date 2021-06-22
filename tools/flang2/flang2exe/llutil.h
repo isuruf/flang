@@ -265,7 +265,7 @@ typedef enum LL_InstrListFlags {
   CALL_FUNC_PTR_FLAG  = (1 << 1),
   CALL_INTRINSIC_FLAG = (1 << 2),
   HIDDEN_ARG_FLAG     = (1 << 3),
-  SIMD_BACKEDGE_FLAG  = (1 << 4), /**< I_BR only */
+  LOOP_BACKEDGE_FLAG  = (1 << 4), /**< I_BR only */
   FAST_MATH_FLAG      = (1 << 4), /**< I_CALL only */
   VOLATILE_FLAG       = (1 << 4), /**< I_LOAD, I_STORE, I_ATOMICRMW,
                                        I_CMPXCHG only */
@@ -284,6 +284,7 @@ typedef enum LL_InstrListFlags {
   NOUNSIGNEDWRAP          = (1 << 12),
   FUNC_RETURN_IS_FUNC_PTR = (1 << 13),
   LDST_HAS_METADATA       = (1 << 13), /**< I_LOAD, I_STORE only */
+  LDST_HAS_ACCESSGRP_METADATA = (1 << 14), /**< I_LOAD, I_STORE only, for llvm.loop.parallel_accesses */
 
   /* Information for atomic operations.
      This information overlaps 12 of the calling convention bits.  In earlier
