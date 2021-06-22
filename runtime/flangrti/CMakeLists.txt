@@ -11,7 +11,7 @@ SET(ASM_OPTIONS "-DLINUX_ELF")
 SET(CMAKE_ASM_FLAGS "${CFLAGS} ${ASM_OPTIONS}" )
 
 if( ${TARGET_ARCHITECTURE} STREQUAL "x86_64" )
-  set(ARCH_DEP_FILES 
+  set(ARCH_DEP_FILES
     x86_64-Linux/x86_daz.c
     x86_64-Linux/x86_flushz.c
     x86_64-Linux/dumpregs.c
@@ -84,19 +84,19 @@ endif()
 # Resolve symbols against libpthread
 find_package(Threads REQUIRED)
 if (CMAKE_THREAD_LIBS_INIT)
-  target_link_libraries(flangrti_shared "${CMAKE_THREAD_LIBS_INIT}")
+  target_link_libraries(flangrti_shared PRIVATE "${CMAKE_THREAD_LIBS_INIT}")
 endif()
 
 # Import OpenMP
 if (NOT DEFINED LIBOMP_EXPORT_DIR)
-  find_library( 
+  find_library(
     FLANG_LIBOMP
     NAMES omp libomp
     HINTS ${CMAKE_BINARY_DIR}/lib)
   target_link_libraries(flangrti_shared PRIVATE ${FLANG_LIBOMP})
 endif()
 
-find_library( 
+find_library(
   LIBPGMATH
   NAMES pgmath libpgmath
   HINTS ${CMAKE_BINARY_DIR}/lib)

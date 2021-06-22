@@ -484,9 +484,9 @@ set_target_properties(flang_static
   Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/include-static
 )
 if (MSVC)
-set_property(TARGET flang_static PROPERTY OUTPUT_NAME libflang)
+  set_property(TARGET flang_static PROPERTY OUTPUT_NAME libflang)
 else()
-set_property(TARGET flang_static PROPERTY OUTPUT_NAME flang)
+  set_property(TARGET flang_static PROPERTY OUTPUT_NAME flang)
 endif()
 
 set(SHARED_LIBRARY TRUE)
@@ -590,7 +590,7 @@ if(NOT ${CMAKE_GENERATOR} STREQUAL "Ninja")
   # State a dependency on the module
   set_source_files_properties(
     ${I8_FILES_DIR}/ieee_arithmetic.F95
-    PROPERTIES 
+    PROPERTIES
     COMPILE_DEFINITIONS DESC_I8
     OBJECT_DEPENDS ${CMAKE_Fortran_MODULE_DIRECTORY}/iso_c_binding.mod
     OBJECT_OUTPUTS ${CMAKE_Fortran_MODULE_DIRECTORY}/ieee_arithmetic_la.mod
@@ -598,7 +598,7 @@ if(NOT ${CMAKE_GENERATOR} STREQUAL "Ninja")
 
   set_source_files_properties(
     ${I8_FILES_DIR}/ieee_exceptions.F95
-    PROPERTIES 
+    PROPERTIES
     COMPILE_DEFINITIONS DESC_I8
     OBJECT_DEPENDS ${CMAKE_Fortran_MODULE_DIRECTORY}/iso_c_binding.mod
     OBJECT_OUTPUTS ${CMAKE_Fortran_MODULE_DIRECTORY}/ieee_exceptions_la.mod
@@ -606,14 +606,14 @@ if(NOT ${CMAKE_GENERATOR} STREQUAL "Ninja")
 
   set_source_files_properties(
     norm2_1.F95
-    PROPERTIES 
+    PROPERTIES
     OBJECT_DEPENDS ${CMAKE_Fortran_MODULE_DIRECTORY}/ieee_arithmetic.mod
     OBJECT_DEPENDS ${CMAKE_Fortran_MODULE_DIRECTORY}/ieee_exceptions.mod
   )
 
   set_source_files_properties(
      ${I8_FILES_DIR}/norm2_1.F95
-    PROPERTIES 
+    PROPERTIES
     OBJECT_DEPENDS ${CMAKE_Fortran_MODULE_DIRECTORY}/ieee_arithmetic_la.mod
     OBJECT_DEPENDS ${CMAKE_Fortran_MODULE_DIRECTORY}/ieee_exceptions_la.mod
   )
