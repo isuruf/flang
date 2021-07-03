@@ -10,8 +10,6 @@ cmake_minimum_required(VERSION 3.3)
 # CMake's Fortran tests
 SET(CMAKE_Fortran_COMPILER_WORKS 1)
 SET(CMAKE_Fortran_ABI_COMPILED 0)
-SET(CMAKE_Fortran_COMPILER_SUPPORTS_F90 1)
-SET(CMAKE_Fortran_MODDIR_FLAG "-J ")
 
 # If we are not building as a part of LLVM, build Flang as a
 # standalone project, using LLVM as an external library:
