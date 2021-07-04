@@ -56,8 +56,6 @@ math(EXPR WRDSZ "${CMAKE_SIZEOF_VOID_P} * 8")
 # If we are not building as a part of LLVM, build Flang as an
 # standalone project, using LLVM as an external library:
 if( CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR )
-  project(Flang)
-
   # Rely on llvm-config.
   set(CONFIG_OUTPUT)
 
