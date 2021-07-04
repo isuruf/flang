@@ -6,15 +6,18 @@
 
 cmake_minimum_required(VERSION 3.3)
 
-# In order to bootstrap the runtime library we need to skip
-# CMake's Fortran tests
-SET(CMAKE_Fortran_COMPILER_WORKS 1)
-SET(CMAKE_Fortran_ABI_COMPILED 0)
-
 # If we are not building as a part of LLVM, build Flang as a
 # standalone project, using LLVM as an external library:
 if( CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR )
   project(Flang)
+endif()
+
+# In order to bootstrap the runtime library we need to skip
+# CMake's Fortran tests
+SET(CMAKE_Fortran_COMPILER_WORKS 1)
+if (WIN32)
+  SET(CMAKE_Fortran_ABI_COMPILED 0)
+  SET(CMAKE_Fortran_COMPILER_SUPPORTS_F90 1)
 endif()
 
 set(TARGET_OS ${CMAKE_SYSTEM_NAME} CACHE STRING "Target OS")
